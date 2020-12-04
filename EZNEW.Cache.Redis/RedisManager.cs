@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Net;
+using EZNEW.Logging;
 
 namespace EZNEW.Cache.Redis
 {
@@ -99,7 +100,6 @@ namespace EZNEW.Cache.Redis
             return conn;
         }
 
-
         /// <summary>
         /// Get connection
         /// </summary>
@@ -168,50 +168,58 @@ namespace EZNEW.Cache.Redis
         /// <returns></returns>
         internal static ConnectionMultiplexer CreateConnection(CacheServer server, IEnumerable<CacheEndPoint> endPoints)
         {
-            if (string.IsNullOrWhiteSpace(server?.Name))
+            try
             {
-                throw new ArgumentNullException("Server's name is null or empty");
+                if (string.IsNullOrWhiteSpace(server?.Name))
+                {
+                    throw new ArgumentNullException("Server's name is null or empty");
+                }
+                if (endPoints.IsNullOrEmpty())
+                {
+                    throw new ArgumentNullException("No endpoint specified");
+                }
+                var configOptions = new ConfigurationOptions()
+                {
+                    AllowAdmin = server.AllowAdmin,
+                    ResolveDns = server.ResolveDns,
+                    Ssl = server.SSL,
+                    SyncTimeout = 10000
+                };
+                foreach (var endPoint in endPoints)
+                {
+                    configOptions.EndPoints.Add(endPoint.Host, endPoint.Port);
+                }
+                if (server.ConnectTimeout > 0)
+                {
+                    configOptions.ConnectTimeout = server.ConnectTimeout;
+                }
+                if (!string.IsNullOrWhiteSpace(server.Password))
+                {
+                    configOptions.Password = server.Password;
+                }
+                if (!string.IsNullOrWhiteSpace(server.ClientName))
+                {
+                    configOptions.ClientName = server.ClientName;
+                }
+                if (!string.IsNullOrWhiteSpace(server.SSLHost))
+                {
+                    configOptions.SslHost = server.SSLHost;
+                }
+                if (server.SyncTimeout > 0)
+                {
+                    configOptions.SyncTimeout = server.SyncTimeout;
+                }
+                if (!string.IsNullOrWhiteSpace(server.TieBreaker))
+                {
+                    configOptions.TieBreaker = server.TieBreaker;
+                }
+                return ConnectionMultiplexer.Connect(configOptions);
             }
-            if (endPoints.IsNullOrEmpty())
+            catch (Exception ex)
             {
-                throw new ArgumentNullException("No endpoint specified");
+                LogManager.LogError<RedisProvider>(ex.Message, ex);
             }
-            var configOptions = new ConfigurationOptions()
-            {
-                AllowAdmin = server.AllowAdmin,
-                ResolveDns = server.ResolveDns,
-                Ssl = server.SSL,
-                SyncTimeout = 10000
-            };
-            foreach (var endPoint in endPoints)
-            {
-                configOptions.EndPoints.Add(endPoint.Host, endPoint.Port);
-            }
-            if (server.ConnectTimeout > 0)
-            {
-                configOptions.ConnectTimeout = server.ConnectTimeout;
-            }
-            if (!string.IsNullOrWhiteSpace(server.Password))
-            {
-                configOptions.Password = server.Password;
-            }
-            if (!string.IsNullOrWhiteSpace(server.ClientName))
-            {
-                configOptions.ClientName = server.ClientName;
-            }
-            if (!string.IsNullOrWhiteSpace(server.SSLHost))
-            {
-                configOptions.SslHost = server.SSLHost;
-            }
-            if (server.SyncTimeout > 0)
-            {
-                configOptions.SyncTimeout = server.SyncTimeout;
-            }
-            if (!string.IsNullOrWhiteSpace(server.TieBreaker))
-            {
-                configOptions.TieBreaker = server.TieBreaker;
-            }
-            return ConnectionMultiplexer.Connect(configOptions);
+            return null;
         }
 
         /// <summary>
@@ -222,6 +230,10 @@ namespace EZNEW.Cache.Redis
         public static void RegisterServer(CacheServer server, IEnumerable<CacheEndPoint> endPoints)
         {
             var conn = CreateConnection(server, endPoints);
+            if (conn == null)
+            {
+                return;
+            }
             if (server.Databases.IsNullOrEmpty())
             {
                 server.Databases = new List<string>(1) { "0" };
