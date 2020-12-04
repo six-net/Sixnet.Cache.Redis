@@ -77,7 +77,7 @@ namespace EZNEW.Cache.Redis
         /// <summary>
         /// Gets or sets save configuration
         /// </summary>
-        public List<DataChangeSaveOption> SaveConfiguration
+        public List<DataChangeSaveOptions> SaveConfiguration
         {
             get; set;
         }
