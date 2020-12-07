@@ -218,7 +218,7 @@ namespace EZNEW.Cache.Redis
             }
             catch (Exception ex)
             {
-                if (ignoreConnectionException)
+                if (!ignoreConnectionException)
                 {
                     throw ex;
                 }
