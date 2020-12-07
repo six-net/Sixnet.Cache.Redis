@@ -14,6 +14,7 @@ using EZNEW.Cache.Hash;
 using EZNEW.Cache.List;
 using EZNEW.Cache.String;
 using EZNEW.Cache.Set;
+using EZNEW.Fault;
 
 namespace EZNEW.Cache.Redis
 {
@@ -5621,6 +5622,10 @@ end";
 
         static IEnumerable<T> GetNoDatabaseResponse<T>(CacheServer server) where T : CacheResponse, new()
         {
+            if (CacheManager.Configuration.ThrowNoDatabaseException)
+            {
+                throw new EZNEWException("No cache database specified");
+            }
             return new T[1] { CacheResponse.NoDatabase<T>(server) };
         }
 

@@ -165,8 +165,9 @@ namespace EZNEW.Cache.Redis
         /// </summary>
         /// <param name="server">Cache server</param>
         /// <param name="endPoints">EndPoints</param>
+        /// <param name="ignoreConnectionException">Ignore connection exception</param>
         /// <returns></returns>
-        internal static ConnectionMultiplexer CreateConnection(CacheServer server, IEnumerable<CacheEndPoint> endPoints)
+        internal static ConnectionMultiplexer CreateConnection(CacheServer server, IEnumerable<CacheEndPoint> endPoints, bool ignoreConnectionException = true)
         {
             try
             {
@@ -217,6 +218,10 @@ namespace EZNEW.Cache.Redis
             }
             catch (Exception ex)
             {
+                if (ignoreConnectionException)
+                {
+                    throw ex;
+                }
                 LogManager.LogError<RedisProvider>(ex.Message, ex);
             }
             return null;
@@ -227,9 +232,10 @@ namespace EZNEW.Cache.Redis
         /// </summary>
         /// <param name="server">Cache server</param>
         /// <param name="endPoints">End points</param>
-        public static void RegisterServer(CacheServer server, IEnumerable<CacheEndPoint> endPoints)
+        /// <param name="ignoreConnectionException">Ignore connection exception</param>
+        public static void RegisterServer(CacheServer server, IEnumerable<CacheEndPoint> endPoints, bool ignoreConnectionException = true)
         {
-            var conn = CreateConnection(server, endPoints);
+            var conn = CreateConnection(server, endPoints, ignoreConnectionException);
             if (conn == null)
             {
                 return;
@@ -259,10 +265,11 @@ namespace EZNEW.Cache.Redis
         /// </summary>
         /// <param name="serverName">Server name</param>
         /// <param name="endPoint">End point</param>
-        public static void RegisterServer(string serverName, CacheEndPoint endPoint)
+        /// <param name="ignoreConnectionException">Ignore connection exception</param>
+        public static void RegisterServer(string serverName, CacheEndPoint endPoint, bool ignoreConnectionException = true)
         {
             var server = new CacheServer(serverName, CacheServerType.Redis);
-            RegisterServer(server, new CacheEndPoint[1] { endPoint });
+            RegisterServer(server, new CacheEndPoint[1] { endPoint }, ignoreConnectionException);
         }
 
         /// <summary>
@@ -271,9 +278,10 @@ namespace EZNEW.Cache.Redis
         /// <param name="serverName">Server name</param>
         /// <param name="host">Host</param>
         /// <param name="port">Port</param>
-        public static void RegisterServer(string serverName, string host, int port)
+        /// <param name="ignoreConnectionException">Ignore connection exception</param>
+        public static void RegisterServer(string serverName, string host, int port, bool ignoreConnectionException = true)
         {
-            RegisterServer(serverName, new CacheEndPoint() { Host = host, Port = port });
+            RegisterServer(serverName, new CacheEndPoint() { Host = host, Port = port }, ignoreConnectionException);
         }
 
         /// <summary>
@@ -281,9 +289,10 @@ namespace EZNEW.Cache.Redis
         /// </summary>
         /// <param name="serverName">Server name</param>
         /// <param name="host">Host</param>
-        public static void RegisterServer(string serverName, string host)
+        /// <param name="ignoreConnectionException">Ignore connection exception</param>
+        public static void RegisterServer(string serverName, string host, bool ignoreConnectionException = true)
         {
-            RegisterServer(serverName, host, 6379);
+            RegisterServer(serverName, host, 6379, ignoreConnectionException);
         }
 
         #endregion
