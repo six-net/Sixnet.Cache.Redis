@@ -218,11 +218,11 @@ namespace EZNEW.Cache.Redis
             }
             catch (Exception ex)
             {
+                LogManager.LogError<RedisProvider>(FrameworkLogEvents.Cache.ConnectionCacheServerError, ex, ex.Message);
                 if (!ignoreConnectionException)
                 {
                     throw ex;
                 }
-                LogManager.LogError<RedisProvider>(ex.Message, ex);
             }
             return null;
         }

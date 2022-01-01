@@ -8,13 +8,13 @@ using StackExchange.Redis;
 using EZNEW.Cache.SortedSet;
 using EZNEW.Cache.Constant;
 using EZNEW.Cache.Server;
-using EZNEW.ValueType;
+using EZNEW.Model;
 using EZNEW.Cache.Keys;
 using EZNEW.Cache.Hash;
 using EZNEW.Cache.List;
 using EZNEW.Cache.String;
 using EZNEW.Cache.Set;
-using EZNEW.Fault;
+using EZNEW.Exceptions;
 
 namespace EZNEW.Cache.Redis
 {
@@ -4906,7 +4906,7 @@ return pv";
                         continue;
                     }
                     var databaseConfig = configs.FirstOrDefault(c => string.Equals(c.Key, "databases", StringComparison.OrdinalIgnoreCase));
-                    int dataBaseSize = databaseConfig.Value.ObjToInt32();
+                    int dataBaseSize = databaseConfig.Value.ObjectToInt32();
                     List<CacheDatabase> databaseList = new List<CacheDatabase>(dataBaseSize);
                     for (var d = 0; d < dataBaseSize; d++)
                     {
