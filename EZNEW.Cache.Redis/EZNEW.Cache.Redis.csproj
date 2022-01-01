@@ -17,7 +17,7 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<PackageReference Include="EZNEW" Version="4.0.0" />
-		<PackageReference Include="StackExchange.Redis" Version="2.1.30" />
+		<PackageReference Include="StackExchange.Redis" Version="2.2.88" />
 	</ItemGroup>
 
 </Project>
