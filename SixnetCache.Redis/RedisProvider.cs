@@ -2,26 +2,28 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using System.Collections.Concurrent;
+using Newtonsoft.Json.Linq;
+using Sixnet.Cache.Hash.Options;
+using Sixnet.Cache.Hash.Response;
+using Sixnet.Cache.Keys.Options;
+using Sixnet.Cache.Keys.Response;
+using Sixnet.Cache.List.Options;
+using Sixnet.Cache.List.Response;
+using Sixnet.Cache.Server.Options;
+using Sixnet.Cache.Server.Response;
+using Sixnet.Cache.Set.Options;
+using Sixnet.Cache.Set.Response;
+using Sixnet.Cache.SortedSet;
+using Sixnet.Cache.SortedSet.Options;
+using Sixnet.Cache.SortedSet.Response;
+using Sixnet.Cache.String;
+using Sixnet.Cache.String.Response;
+using Sixnet.Exceptions;
 using StackExchange.Redis;
-using EZNEW.Cache.SortedSet;
-using EZNEW.Cache.Constant;
-using EZNEW.Cache.Server;
-using EZNEW.Model;
-using EZNEW.Cache.Keys;
-using EZNEW.Cache.Hash;
-using EZNEW.Cache.List;
-using EZNEW.Cache.String;
-using EZNEW.Cache.Set;
-using EZNEW.Exceptions;
 
-namespace EZNEW.Cache.Redis
+namespace Sixnet.Cache.Redis
 {
-    /// <summary>
-    /// Implements ICacheProvider by Redis
-    /// </summary>
-    public class RedisProvider : ICacheProvider
+    public partial class RedisProvider : ISixnetCacheProvider
     {
         #region String
 
@@ -37,18 +39,27 @@ namespace EZNEW.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="options">String set range options</param>
         /// <returns>Return string set range response</returns>
-        public async Task<IEnumerable<StringSetRangeResponse>> StringSetRangeAsync(CacheServer server, StringSetRangeOptions options)
+        public StringSetRangeResponse StringSetRange(CacheServer server, StringSetRangeOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringSetRangeOptions)}.{nameof(StringSetRangeOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringSetRangeStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringSetRangeResponse()
             {
-                return GetNoDatabaseResponse<StringSetRangeResponse>(server);
-            }
-            string script = $@"local len=redis.call('SETRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                CacheServer = server,
+                Database = database,
+                NewValueLength = (long)result
+            };
+        }
+
+        RedisStatement GetStringSetRangeStatement(StringSetRangeOptions options)
+        {
+            var script = $@"local len=redis.call('SETRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return len";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -58,23 +69,17 @@ return len";
                 options.Offset,
                 options.Value,
                 options.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                expire.Item1 && RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
             };
             var commandFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringSetRangeResponse> responses = new List<StringSetRangeResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, commandFlags).ConfigureAwait(false);
-                responses.Add(new StringSetRangeResponse()
-                {
-                    Success = true,
-                    CacheServer = server,
-                    Database = db,
-                    NewValueLength = (long)result
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = commandFlags
+            };
         }
 
         #endregion
@@ -90,18 +95,27 @@ return len";
         /// <param name="server">Cache server</param>
         /// <param name="options">String set bit options</param>
         /// <returns>Return string set bit response</returns>
-        public async Task<IEnumerable<StringSetBitResponse>> StringSetBitAsync(CacheServer server, StringSetBitOptions options)
+        public StringSetBitResponse StringSetBit(CacheServer server, StringSetBitOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringSetBitOptions)}.{nameof(StringSetBitOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringSetBitStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringSetBitResponse()
             {
-                return GetNoDatabaseResponse<StringSetBitResponse>(server);
-            }
-            string script = $@"local obv=redis.call('SETBIT',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                OldBitValue = (bool)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringSetBitStatement(StringSetBitOptions options)
+        {
+            var script = $@"local obv=redis.call('SETBIT',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -119,19 +133,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringSetBitResponse> responses = new List<StringSetBitResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringSetBitResponse()
-                {
-                    Success = true,
-                    OldBitValue = (bool)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -145,17 +153,26 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String set options</param>
         /// <returns>Return string set response</returns>
-        public async Task<IEnumerable<StringSetResponse>> StringSetAsync(CacheServer server, StringSetOptions options)
+        public StringSetResponse StringSet(CacheServer server, StringSetOptions options)
         {
             if (options?.Items.IsNullOrEmpty() ?? true)
             {
                 return GetNoValueResponse<StringSetResponse>(server);
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringSetStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringSetResponse()
             {
-                return GetNoDatabaseResponse<StringSetResponse>(server);
-            }
+                CacheServer = server,
+                Database = database,
+                Success = true,
+                Results = ((RedisValue[])result)?.Select(c => new StringEntrySetResult() { SetSuccess = true, Key = c }).ToList()
+            };
+        }
+
+        RedisStatement GetStringSetStatement(StringSetOptions options)
+        {
             var itemCount = options.Items.Count;
             var valueCount = itemCount * 5;
             var allowSlidingExpire = RedisManager.AllowSlidingExpiration();
@@ -175,7 +192,7 @@ return obv";
                 setValues[argIndex + 3] = nowExpire.Item2.HasValue ? RedisManager.GetTotalSeconds(nowExpire.Item2) : (allowSliding ? 0 : -1);
                 setValues[argIndex + 4] = RedisManager.GetSetWhenCommand(nowItem.When);
             }
-            string script = $@"local skeys={{}}
+            var script = $@"local skeys={{}}
 local ckey=''
 local exkey=''
 local argBi=1
@@ -226,19 +243,13 @@ do
 end
 return skeys";
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringSetResponse> responses = new List<StringSetResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, setKeys, setValues, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringSetResponse()
-                {
-                    CacheServer = server,
-                    Database = db,
-                    Success = true,
-                    Results = ((RedisValue[])result)?.Select(c => new StringEntrySetResult() { SetSuccess = true, Key = c }).ToList()
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = setKeys,
+                Parameters = setValues,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -251,18 +262,27 @@ return skeys";
         /// <param name="server">Cache server</param>
         /// <param name="options">String length options</param>
         /// <returns>Return string length response</returns>
-        public async Task<IEnumerable<StringLengthResponse>> StringLengthAsync(CacheServer server, StringLengthOptions options)
+        public StringLengthResponse StringLength(CacheServer server, StringLengthOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringLengthOptions)}.{nameof(StringLengthOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringLengthStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringLengthResponse()
             {
-                return GetNoDatabaseResponse<StringLengthResponse>(server);
-            }
-            string script = $@"local obv=redis.call('STRLEN',{Keys(1)})
+                Success = true,
+                Length = (long)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringLengthStatement(StringLengthOptions options)
+        {
+            var script = $@"local obv=redis.call('STRLEN',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return obv";
             var keys = new RedisKey[]
@@ -277,19 +297,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringLengthResponse> responses = new List<StringLengthResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringLengthResponse()
-                {
-                    Success = true,
-                    Length = (long)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -305,18 +319,27 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String increment options</param>
         /// <returns>Return string increment response</returns>
-        public async Task<IEnumerable<StringIncrementResponse>> StringIncrementAsync(CacheServer server, StringIncrementOptions options)
+        public StringIncrementResponse StringIncrement(CacheServer server, StringIncrementOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringIncrementOptions)}.{nameof(StringIncrementOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringIncrementStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringIncrementResponse()
             {
-                return GetNoDatabaseResponse<StringIncrementResponse>(server);
-            }
-            string script = $@"local obv=redis.call('INCRBY',{Keys(1)},{Arg(1)})
+                Success = true,
+                NewValue = (long)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringIncrementStatement(StringIncrementOptions options)
+        {
+            var script = $@"local obv=redis.call('INCRBY',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -333,19 +356,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringIncrementResponse> responses = new List<StringIncrementResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringIncrementResponse()
-                {
-                    Success = true,
-                    NewValue = (long)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -360,18 +377,28 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String get with expiry ption</param>
         /// <returns>Return string get with expiry response</returns>
-        public async Task<IEnumerable<StringGetWithExpiryResponse>> StringGetWithExpiryAsync(CacheServer server, StringGetWithExpiryOptions options)
+        public StringGetWithExpiryResponse StringGetWithExpiry(CacheServer server, StringGetWithExpiryOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringGetWithExpiryOptions)}.{nameof(StringGetWithExpiryOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringGetWithExpiryStatement(options);
+            var result = (RedisValue[])(ExecuteStatement(server, database, statement));
+            return new StringGetWithExpiryResponse()
             {
-                return GetNoDatabaseResponse<StringGetWithExpiryResponse>(server);
-            }
-            string script = $@"local obv=redis.call('GET',{Keys(1)})
+                Success = true,
+                Value = result[0],
+                Expiry = TimeSpan.FromSeconds((long)result[1]),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringGetWithExpiryStatement(StringGetWithExpiryOptions options)
+        {
+            var script = $@"local obv=redis.call('GET',{Keys(1)})
 local exts=0
 local res={{}}
 if obv
@@ -394,20 +421,13 @@ return res";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringGetWithExpiryResponse> responses = new List<StringGetWithExpiryResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])(await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false));
-                responses.Add(new StringGetWithExpiryResponse()
-                {
-                    Success = true,
-                    Value = result[0],
-                    Expiry = TimeSpan.FromSeconds((long)result[1]),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -420,18 +440,27 @@ return res";
         /// <param name="server">Cache server</param>
         /// <param name="options">String get set options</param>
         /// <returns>Return string get set response</returns>
-        public async Task<IEnumerable<StringGetSetResponse>> StringGetSetAsync(CacheServer server, StringGetSetOptions options)
+        public StringGetSetResponse StringGetSet(CacheServer server, StringGetSetOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringGetSetOptions)}.{nameof(StringGetSetOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringGetSetStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringGetSetResponse()
             {
-                return GetNoDatabaseResponse<StringGetSetResponse>(server);
-            }
-            string script = $@"local ov=redis.call('GETSET',{Keys(1)},{Arg(1)})
+                Success = true,
+                OldValue = (string)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringGetSetStatement(StringGetSetOptions options)
+        {
+            var script = $@"local ov=redis.call('GETSET',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return ov";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -448,19 +477,13 @@ return ov";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringGetSetResponse> responses = new List<StringGetSetResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringGetSetResponse()
-                {
-                    Success = true,
-                    OldValue = (string)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -476,18 +499,27 @@ return ov";
         /// <param name="server">Cache server</param>
         /// <param name="options">String get range options</param>
         /// <returns>Return string get range response</returns>
-        public async Task<IEnumerable<StringGetRangeResponse>> StringGetRangeAsync(CacheServer server, StringGetRangeOptions options)
+        public StringGetRangeResponse StringGetRange(CacheServer server, StringGetRangeOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringGetRangeOptions)}.{nameof(StringGetRangeOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringGetRangeStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringGetRangeResponse()
             {
-                return GetNoDatabaseResponse<StringGetRangeResponse>(server);
-            }
-            string script = $@"local ov=redis.call('GETRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                Value = (string)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringGetRangeStatement(StringGetRangeOptions options)
+        {
+            var script = $@"local ov=redis.call('GETRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return ov";
             var keys = new RedisKey[]
@@ -504,19 +536,13 @@ return ov";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringGetRangeResponse> responses = new List<StringGetRangeResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringGetRangeResponse()
-                {
-                    Success = true,
-                    Value = (string)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -531,18 +557,27 @@ return ov";
         /// <param name="server">Cache server</param>
         /// <param name="options">String get bit options</param>
         /// <returns>Return string get bit response</returns>
-        public async Task<IEnumerable<StringGetBitResponse>> StringGetBitAsync(CacheServer server, StringGetBitOptions options)
+        public StringGetBitResponse StringGetBit(CacheServer server, StringGetBitOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringGetBitOptions)}.{nameof(StringGetBitOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringGetBitStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringGetBitResponse()
             {
-                return GetNoDatabaseResponse<StringGetBitResponse>(server);
-            }
-            string script = $@"local ov=redis.call('GETBIT',{Keys(1)},{Arg(1)})
+                Success = true,
+                Bit = (bool)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringGetBitStatement(StringGetBitOptions options)
+        {
+            var script = $@"local ov=redis.call('GETBIT',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return ov";
             var keys = new RedisKey[]
@@ -558,19 +593,13 @@ return ov";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringGetBitResponse> responses = new List<StringGetBitResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringGetBitResponse()
-                {
-                    Success = true,
-                    Bit = (bool)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -584,19 +613,37 @@ return ov";
         /// <param name="server">Cache server</param>
         /// <param name="options">String get options</param>
         /// <returns>Return string get response</returns>
-        public async Task<IEnumerable<StringGetResponse>> StringGetAsync(CacheServer server, StringGetOptions options)
+        public StringGetResponse StringGet(CacheServer server, StringGetOptions options)
         {
             if (options?.Keys.IsNullOrEmpty() ?? true)
             {
                 return GetNoKeyResponse<StringGetResponse>(server);
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringGetStatement(options);
+            var result = (RedisValue[])(ExecuteStatement(server, database, statement));
+            return new StringGetResponse()
             {
-                return GetNoDatabaseResponse<StringGetResponse>(server);
-            }
+                Success = true,
+                Values = result.Select(c =>
+                {
+                    string stringValue = c;
+                    var valueArray = stringValue.LSplit("$::$");
+                    return new CacheEntry()
+                    {
+                        Key = valueArray[0],
+                        Value = valueArray.Length > 1 ? valueArray[1] : null
+                    };
+                }).ToList(),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringGetStatement(StringGetOptions options)
+        {
             var keys = options.Keys.Select(c => { RedisKey rv = c.GetActualKey(); return rv; }).ToArray();
-            string script = $@"local vals={{}}
+            var script = $@"local vals={{}}
 local ri=1
 for ki=1,{keys.Length}
 do
@@ -617,28 +664,13 @@ return vals";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringGetResponse> responses = new List<StringGetResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])(await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false));
-                responses.Add(new StringGetResponse()
-                {
-                    Success = true,
-                    Values = result.Select(c =>
-                    {
-                        string stringValue = c;
-                        var valueArray = stringValue.LSplit("$::$");
-                        return new CacheEntry()
-                        {
-                            Key = valueArray[0],
-                            Value = valueArray.Length > 1 ? valueArray[1] : null
-                        };
-                    }).ToList(),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -654,18 +686,27 @@ return vals";
         /// <param name="server">Cache server</param>
         /// <param name="options">String decrement options</param>
         /// <returns>Return string decrement response</returns>
-        public async Task<IEnumerable<StringDecrementResponse>> StringDecrementAsync(CacheServer server, StringDecrementOptions options)
+        public StringDecrementResponse StringDecrement(CacheServer server, StringDecrementOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringDecrementOptions)}.{nameof(StringDecrementOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringDecrementStatement(options);
+            var result = ExecuteStatement(server, database, statement);
+            return new StringDecrementResponse()
             {
-                return GetNoDatabaseResponse<StringDecrementResponse>(server);
-            }
-            string script = $@"local obv=redis.call('DECRBY',{Keys(1)},{Arg(1)})
+                Success = true,
+                NewValue = (long)result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringDecrementStatement(StringDecrementOptions options)
+        {
+            var script = $@"local obv=redis.call('DECRBY',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -682,19 +723,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringDecrementResponse> responses = new List<StringDecrementResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringDecrementResponse()
-                {
-                    Success = true,
-                    NewValue = (long)result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -713,18 +748,28 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String bit position options</param>
         /// <returns>Return string bit position response</returns>
-        public async Task<IEnumerable<StringBitPositionResponse>> StringBitPositionAsync(CacheServer server, StringBitPositionOptions options)
+        public StringBitPositionResponse StringBitPosition(CacheServer server, StringBitPositionOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringBitPositionOptions)}.{nameof(StringBitPositionOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringBitPositionStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new StringBitPositionResponse()
             {
-                return GetNoDatabaseResponse<StringBitPositionResponse>(server);
-            }
-            string script = $@"local obv=redis.call('BITPOS',{Keys(1)},{Arg(1)},{Arg(2)},{Arg(3)})
+                Success = true,
+                Position = result,
+                HasValue = result >= 0,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringBitPositionStatement(StringBitPositionOptions options)
+        {
+            var script = $@"local obv=redis.call('BITPOS',{Keys(1)},{Arg(1)},{Arg(2)},{Arg(3)})
 {GetRefreshExpirationScript(1)}
 return obv";
             var keys = new RedisKey[]
@@ -742,20 +787,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringBitPositionResponse> responses = new List<StringBitPositionResponse>();
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringBitPositionResponse()
-                {
-                    Success = true,
-                    Position = result,
-                    HasValue = result >= 0,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -772,7 +810,7 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String bit operation options</param>
         /// <returns>Return string bit operation response</returns>
-        public async Task<IEnumerable<StringBitOperationResponse>> StringBitOperationAsync(CacheServer server, StringBitOperationOptions options)
+        public StringBitOperationResponse StringBitOperation(CacheServer server, StringBitOperationOptions options)
         {
             if (options?.Keys.IsNullOrEmpty() ?? true)
             {
@@ -782,11 +820,20 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringBitOperationOptions)}.{nameof(StringBitOperationOptions.DestinationKey)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringBitOperationStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new StringBitOperationResponse()
             {
-                return GetNoDatabaseResponse<StringBitOperationResponse>(server);
-            }
+                Success = true,
+                DestinationValueLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringBitOperationStatement(StringBitOperationOptions options)
+        {
             var keys = new RedisKey[options.Keys.Count + 1];
             var keyParameters = new string[options.Keys.Count + 1];
             keys[0] = options.DestinationKey.GetActualKey();
@@ -796,7 +843,7 @@ return obv";
                 keys[i + 1] = options.Keys[i].GetActualKey();
                 keyParameters[i + 1] = $"KEYS[{2 + i}]";
             }
-            string script = $@"local obv=redis.call('BITOP',{Arg(1)},{string.Join(",", keyParameters)})
+            var script = $@"local obv=redis.call('BITOP',{Arg(1)},{string.Join(",", keyParameters)})
 {GetRefreshExpirationScript(-1)}
 {GetRefreshExpirationScript(2, 1, options.Keys.Count)}
 return obv";
@@ -813,19 +860,13 @@ return obv";
                 0//expire time seconds-source key
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringBitOperationResponse> responses = new List<StringBitOperationResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringBitOperationResponse()
-                {
-                    Success = true,
-                    DestinationValueLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -843,18 +884,27 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String bit count options</param>
         /// <returns>Return string bit count response</returns>
-        public async Task<IEnumerable<StringBitCountResponse>> StringBitCountAsync(CacheServer server, StringBitCountOptions options)
+        public StringBitCountResponse StringBitCount(CacheServer server, StringBitCountOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringBitCountOptions)}.{nameof(StringBitCountOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringBitCountStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new StringBitCountResponse()
             {
-                return GetNoDatabaseResponse<StringBitCountResponse>(server);
-            }
-            string script = $@"local obv=redis.call('BITCOUNT',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                BitNum = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringBitCountStatement(StringBitCountOptions options)
+        {
+            var script = $@"local obv=redis.call('BITCOUNT',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return obv";
             var keys = new RedisKey[]
@@ -871,19 +921,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringBitCountResponse> responses = new List<StringBitCountResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringBitCountResponse()
-                {
-                    Success = true,
-                    BitNum = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -898,18 +942,27 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">String append options</param>
         /// <returns>Return string append response</returns>
-        public async Task<IEnumerable<StringAppendResponse>> StringAppendAsync(CacheServer server, StringAppendOptions options)
+        public StringAppendResponse StringAppend(CacheServer server, StringAppendOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(StringAppendOptions)}.{nameof(StringAppendOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetStringAppendStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new StringAppendResponse()
             {
-                return GetNoDatabaseResponse<StringAppendResponse>(server);
-            }
-            string script = $@"local obv=redis.call('APPEND',{Keys(1)},{Arg(1)})
+                Success = true,
+                NewValueLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetStringAppendStatement(StringAppendOptions options)
+        {
+            var script = $@"local obv=redis.call('APPEND',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -926,19 +979,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<StringAppendResponse> responses = new List<StringAppendResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new StringAppendResponse()
-                {
-                    Success = true,
-                    NewValueLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -961,18 +1008,26 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">List trim options</param>
         /// <returns>Return list trim response</returns>
-        public async Task<IEnumerable<ListTrimResponse>> ListTrimAsync(CacheServer server, ListTrimOptions options)
+        public ListTrimResponse ListTrim(CacheServer server, ListTrimOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListTrimOptions)}.{nameof(ListTrimOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListTrimStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListTrimResponse()
             {
-                return GetNoDatabaseResponse<ListTrimResponse>(server);
-            }
-            string script = $@"redis.call('LTRIM',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListTrimStatement(ListTrimOptions options)
+        {
+            var script = $@"redis.call('LTRIM',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}";
             var keys = new RedisKey[]
             {
@@ -988,18 +1043,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListTrimResponse> responses = new List<ListTrimResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListTrimResponse()
-                {
-                    Success = true,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1013,18 +1063,26 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List set by index options</param>
         /// <returns>Return list set by index response</returns>
-        public async Task<IEnumerable<ListSetByIndexResponse>> ListSetByIndexAsync(CacheServer server, ListSetByIndexOptions options)
+        public ListSetByIndexResponse ListSetByIndex(CacheServer server, ListSetByIndexOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListSetByIndexOptions)}.{nameof(ListSetByIndexOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListSetByIndexStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new ListSetByIndexResponse()
             {
-                return GetNoDatabaseResponse<ListSetByIndexResponse>(server);
-            }
-            string script = $@"local obv=redis.call('LSET',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListSetByIndexStatement(ListSetByIndexOptions options)
+        {
+            var script = $@"local obv=redis.call('LSET',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return obv['ok']";
             var keys = new RedisKey[]
@@ -1040,18 +1098,13 @@ return obv['ok']";
                 0,//expire time seconds
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListSetByIndexResponse> responses = new List<ListSetByIndexResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListSetByIndexResponse()
-                {
-                    Success = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1069,7 +1122,7 @@ return obv['ok']";
         /// <param name="server">Cache server</param>
         /// <param name="options">List right push options</param>
         /// <returns>Return list right push</returns>
-        public async Task<IEnumerable<ListRightPushResponse>> ListRightPushAsync(CacheServer server, ListRightPushOptions options)
+        public ListRightPushResponse ListRightPush(CacheServer server, ListRightPushOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -1079,11 +1132,20 @@ return obv['ok']";
             {
                 throw new ArgumentException($"{nameof(ListRightPushOptions)}.{nameof(ListRightPushOptions.Values)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListRightPushStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListRightPushResponse()
             {
-                return GetNoDatabaseResponse<ListRightPushResponse>(server);
-            }
+                Success = true,
+                NewListLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListRightPushStatement(ListRightPushOptions options)
+        {
             var values = new RedisValue[options.Values.Count + 3];
             var valueParameters = new string[options.Values.Count];
             for (var i = 0; i < options.Values.Count; i++)
@@ -1091,31 +1153,25 @@ return obv['ok']";
                 values[i] = options.Values[i];
                 valueParameters[i] = $"{Arg(i + 1)}";
             }
-            string script = $@"local obv=redis.call('RPUSH',{Keys(1)},{string.Join(",", valueParameters)})
+            var script = $@"local obv=redis.call('RPUSH',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(options.Values.Count - 2)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
             values[values.Length - 3] = options.Expiration == null;//refresh current time
             values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = expire.Item2?.TotalSeconds ?? 0;//expire time seconds
+            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var keys = new RedisKey[]
             {
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListRightPushResponse> responses = new List<ListRightPushResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListRightPushResponse()
-                {
-                    Success = true,
-                    NewListLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1130,7 +1186,7 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List right pop left push options</param>
         /// <returns>Return list right pop left response</returns>
-        public async Task<IEnumerable<ListRightPopLeftPushResponse>> ListRightPopLeftPushAsync(CacheServer server, ListRightPopLeftPushOptions options)
+        public ListRightPopLeftPushResponse ListRightPopLeftPush(CacheServer server, ListRightPopLeftPushOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.SourceKey))
             {
@@ -1140,12 +1196,21 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(ListRightPopLeftPushOptions)}.{nameof(ListRightPopLeftPushOptions.DestinationKey)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListRightPopLeftPushStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new ListRightPopLeftPushResponse()
             {
-                return GetNoDatabaseResponse<ListRightPopLeftPushResponse>(server);
-            }
-            string script = $@"local pv=redis.call('RPOPLPUSH',{Keys(1)},{Keys(2)})
+                Success = true,
+                PopValue = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListRightPopLeftPushStatement(ListRightPopLeftPushOptions options)
+        {
+            var script = $@"local pv=redis.call('RPOPLPUSH',{Keys(1)},{Keys(2)})
 {GetRefreshExpirationScript(-2)}
 {GetRefreshExpirationScript(1, 1)}
 return pv";
@@ -1168,19 +1233,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListRightPopLeftPushResponse> responses = new List<ListRightPopLeftPushResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListRightPopLeftPushResponse()
-                {
-                    Success = true,
-                    PopValue = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1193,18 +1252,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List right pop options</param>
         /// <returns>Return list right pop response</returns>
-        public async Task<IEnumerable<ListRightPopResponse>> ListRightPopAsync(CacheServer server, ListRightPopOptions options)
+        public ListRightPopResponse ListRightPop(CacheServer server, ListRightPopOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListRightPopOptions)}.{nameof(ListRightPopOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListRightPopStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new ListRightPopResponse()
             {
-                return GetNoDatabaseResponse<ListRightPopResponse>(server);
-            }
-            string script = $@"local pv=redis.call('RPOP',{Keys(1)})
+                Success = true,
+                PopValue = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListRightPopStatement(ListRightPopOptions options)
+        {
+            var script = $@"local pv=redis.call('RPOP',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -1219,19 +1287,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListRightPopResponse> responses = new List<ListRightPopResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListRightPopResponse()
-                {
-                    Success = true,
-                    PopValue = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1248,18 +1310,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List remove options</param>
         /// <returns>Return list remove response</returns>
-        public async Task<IEnumerable<ListRemoveResponse>> ListRemoveAsync(CacheServer server, ListRemoveOptions options)
+        public ListRemoveResponse ListRemove(CacheServer server, ListRemoveOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListRemoveOptions)}.{nameof(ListRemoveOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListRemoveStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListRemoveResponse()
             {
-                return GetNoDatabaseResponse<ListRemoveResponse>(server);
-            }
-            string script = $@"local rc=redis.call('LREM',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                RemoveCount = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListRemoveStatement(ListRemoveOptions options)
+        {
+            var script = $@"local rc=redis.call('LREM',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return rc";
             var keys = new RedisKey[]
@@ -1276,19 +1347,13 @@ return rc";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListRemoveResponse> responses = new List<ListRemoveResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListRemoveResponse()
-                {
-                    Success = true,
-                    RemoveCount = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1307,18 +1372,27 @@ return rc";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>list range response</returns>
-        public async Task<IEnumerable<ListRangeResponse>> ListRangeAsync(CacheServer server, ListRangeOptions options)
+        public ListRangeResponse ListRange(CacheServer server, ListRangeOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListRangeOptions)}.{nameof(ListRangeOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListRangeStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new ListRangeResponse()
             {
-                return GetNoDatabaseResponse<ListRangeResponse>(server);
-            }
-            string script = $@"local rc=redis.call('LRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                Values = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListRangeStatement(ListRangeOptions options)
+        {
+            var script = $@"local rc=redis.call('LRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return rc";
             var keys = new RedisKey[]
@@ -1335,19 +1409,13 @@ return rc";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListRangeResponse> responses = new List<ListRangeResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListRangeResponse()
-                {
-                    Success = true,
-                    Values = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1361,18 +1429,27 @@ return rc";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>list length response</returns>
-        public async Task<IEnumerable<ListLengthResponse>> ListLengthAsync(CacheServer server, ListLengthOptions options)
+        public ListLengthResponse ListLength(CacheServer server, ListLengthOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListLengthOptions)}.{nameof(ListLengthOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListLengthStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListLengthResponse()
             {
-                return GetNoDatabaseResponse<ListLengthResponse>(server);
-            }
-            string script = $@"local len=redis.call('LLEN',{Keys(1)})
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListLengthStatement(ListLengthOptions options)
+        {
+            var script = $@"local len=redis.call('LLEN',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return len";
             var keys = new RedisKey[]
@@ -1387,19 +1464,13 @@ return len";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListLengthResponse> responses = new List<ListLengthResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListLengthResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1413,7 +1484,7 @@ return len";
         /// <param name="server">Cache server</param>
         /// <param name="options">List left push options</param>
         /// <returns>Return list left push response</returns>
-        public async Task<IEnumerable<ListLeftPushResponse>> ListLeftPushAsync(CacheServer server, ListLeftPushOptions options)
+        public ListLeftPushResponse ListLeftPush(CacheServer server, ListLeftPushOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -1423,11 +1494,20 @@ return len";
             {
                 throw new ArgumentException($"{nameof(ListRightPushOptions)}.{nameof(ListRightPushOptions.Values)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListLeftPushStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListLeftPushResponse()
             {
-                return GetNoDatabaseResponse<ListLeftPushResponse>(server);
-            }
+                Success = true,
+                NewListLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListLeftPushStatement(ListLeftPushOptions options)
+        {
             var values = new RedisValue[options.Values.Count + 3];
             var valueParameters = new string[options.Values.Count];
             for (var i = 0; i < options.Values.Count; i++)
@@ -1435,31 +1515,25 @@ return len";
                 values[i] = options.Values[i];
                 valueParameters[i] = $"{Arg(i + 1)}";
             }
-            string script = $@"local obv=redis.call('LPUSH',{Keys(1)},{string.Join(",", valueParameters)})
+            var script = $@"local obv=redis.call('LPUSH',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(options.Values.Count - 2)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
             values[values.Length - 3] = options.Expiration == null;//refresh current time
             values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = expire.Item2?.TotalSeconds ?? 0;//expire time seconds
+            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var keys = new RedisKey[]
             {
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListLeftPushResponse> responses = new List<ListLeftPushResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListLeftPushResponse()
-                {
-                    Success = true,
-                    NewListLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1472,18 +1546,27 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List left pop options</param>
         /// <returns>list left pop response</returns>
-        public async Task<IEnumerable<ListLeftPopResponse>> ListLeftPopAsync(CacheServer server, ListLeftPopOptions options)
+        public ListLeftPopResponse ListLeftPop(CacheServer server, ListLeftPopOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListLeftPopOptions)}.{nameof(ListLeftPopOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListLeftPopStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new ListLeftPopResponse()
             {
-                return GetNoDatabaseResponse<ListLeftPopResponse>(server);
-            }
-            string script = $@"local pv=redis.call('LPOP',{Keys(1)})
+                Success = true,
+                PopValue = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListLeftPopStatement(ListLeftPopOptions options)
+        {
+            var script = $@"local pv=redis.call('LPOP',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -1498,19 +1581,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListLeftPopResponse> responses = new List<ListLeftPopResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListLeftPopResponse()
-                {
-                    Success = true,
-                    PopValue = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1525,18 +1602,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List insert before options</param>
         /// <returns>Return list insert begore response</returns>
-        public async Task<IEnumerable<ListInsertBeforeResponse>> ListInsertBeforeAsync(CacheServer server, ListInsertBeforeOptions options)
+        public ListInsertBeforeResponse ListInsertBefore(CacheServer server, ListInsertBeforeOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListInsertBeforeOptions)}.{nameof(ListInsertBeforeOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListInsertBeforeStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListInsertBeforeResponse()
             {
-                return GetNoDatabaseResponse<ListInsertBeforeResponse>(server);
-            }
-            string script = $@"local pv=redis.call('LINSERT',{Keys(1)},'BEFORE',{Arg(1)},{Arg(2)})
+                Success = result > 0,
+                NewListLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListInsertBeforeStatement(ListInsertBeforeOptions options)
+        {
+            var script = $@"local pv=redis.call('LINSERT',{Keys(1)},'BEFORE',{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -1553,19 +1639,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListInsertBeforeResponse> responses = new List<ListInsertBeforeResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListInsertBeforeResponse()
-                {
-                    Success = result > 0,
-                    NewListLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1580,18 +1660,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List insert after options</param>
         /// <returns>Return list insert after response</returns>
-        public async Task<IEnumerable<ListInsertAfterResponse>> ListInsertAfterAsync(CacheServer server, ListInsertAfterOptions options)
+        public ListInsertAfterResponse ListInsertAfter(CacheServer server, ListInsertAfterOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListInsertAfterOptions)}.{nameof(ListInsertAfterOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListInsertAfterStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ListInsertAfterResponse()
             {
-                return GetNoDatabaseResponse<ListInsertAfterResponse>(server);
-            }
-            string script = $@"local pv=redis.call('LINSERT',{Keys(1)},'AFTER',{Arg(1)},{Arg(2)})
+                Success = result > 0,
+                NewListLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListInsertAfterStatement(ListInsertAfterOptions options)
+        {
+            var script = $@"local pv=redis.call('LINSERT',{Keys(1)},'AFTER',{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -1608,19 +1697,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListInsertAfterResponse> responses = new List<ListInsertAfterResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListInsertAfterResponse()
-                {
-                    Success = result > 0,
-                    NewListLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1636,18 +1719,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">List get by index options</param>
         /// <returns>Return list get by index response</returns>
-        public async Task<IEnumerable<ListGetByIndexResponse>> ListGetByIndexAsync(CacheServer server, ListGetByIndexOptions options)
+        public ListGetByIndexResponse ListGetByIndex(CacheServer server, ListGetByIndexOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ListInsertAfterOptions)}.{nameof(ListInsertAfterOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetListGetByIndexStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new ListGetByIndexResponse()
             {
-                return GetNoDatabaseResponse<ListGetByIndexResponse>(server);
-            }
-            string script = $@"local pv=redis.call('LINDEX',{Keys(1)},{Arg(1)})
+                Success = true,
+                Value = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetListGetByIndexStatement(ListGetByIndexOptions options)
+        {
+            var script = $@"local pv=redis.call('LINDEX',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[]
@@ -1663,19 +1755,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ListGetByIndexResponse> responses = new List<ListGetByIndexResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ListGetByIndexResponse()
-                {
-                    Success = true,
-                    Value = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1692,18 +1778,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash values options</param>
         /// <returns>Return hash values response</returns>
-        public async Task<IEnumerable<HashValuesResponse>> HashValuesAsync(CacheServer server, HashValuesOptions options)
+        public HashValuesResponse HashValues(CacheServer server, HashValuesOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(HashValuesOptions)}.{nameof(HashValuesOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashValuesStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new HashValuesResponse()
             {
-                return GetNoDatabaseResponse<HashValuesResponse>(server);
-            }
-            string script = $@"local pv=redis.call('HVALS',{Keys(1)})
+                Success = true,
+                Values = result.Select(c => { dynamic value = c; return value; }).ToList(),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashValuesStatement(HashValuesOptions options)
+        {
+            var script = $@"local pv=redis.call('HVALS',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -1718,19 +1813,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashValuesResponse> responses = new List<HashValuesResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashValuesResponse()
-                {
-                    Success = true,
-                    Values = result.Select(c => { dynamic value = c; return value; }).ToList(),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1744,7 +1833,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash set options</param>
         /// <returns>Return hash set response</returns>
-        public async Task<IEnumerable<HashSetResponse>> HashSetAsync(CacheServer server, HashSetOptions options)
+        public HashSetResponse HashSet(CacheServer server, HashSetOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -1754,11 +1843,19 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashSetOptions)}.{nameof(HashSetOptions.Items)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashSetStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new HashSetResponse()
             {
-                return GetNoDatabaseResponse<HashSetResponse>(server);
-            }
+                Success = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashSetStatement(HashSetOptions options)
+        {
             var valueCount = options.Items.Count * 2;
             var values = new RedisValue[valueCount + 3];
             var valueParameters = new string[valueCount];
@@ -1771,30 +1868,25 @@ return pv";
                 valueParameters[valueIndex + 1] = $"{Arg(valueIndex + 2)}";
                 valueIndex += 2;
             }
-            string script = $@"local obv=redis.call('HMSET',{Keys(1)},{string.Join(",", valueParameters)})
+            var script = $@"local obv=redis.call('HMSET',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(valueCount - 2)}
 return obv['ok']";
             var expire = RedisManager.GetExpiration(options.Expiration);
             values[values.Length - 3] = options.Expiration == null;//refresh current time
             values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = expire.Item2?.TotalSeconds ?? 0;//expire time seconds
+            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var keys = new RedisKey[]
             {
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashSetResponse> responses = new List<HashSetResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashSetResponse()
-                {
-                    Success = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1807,18 +1899,27 @@ return obv['ok']";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash length options</param>
         /// <returns>Return hash length response</returns>
-        public async Task<IEnumerable<HashLengthResponse>> HashLengthAsync(CacheServer server, HashLengthOptions options)
+        public HashLengthResponse HashLength(CacheServer server, HashLengthOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(HashLengthOptions)}.{nameof(HashLengthOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashLengthStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new HashLengthResponse()
             {
-                return GetNoDatabaseResponse<HashLengthResponse>(server);
-            }
-            string script = $@"local pv=redis.call('HLEN',{Keys(1)})
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashLengthStatement(HashLengthOptions options)
+        {
+            var script = $@"local pv=redis.call('HLEN',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -1833,19 +1934,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashLengthResponse> responses = new List<HashLengthResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashLengthResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1858,18 +1953,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash key options</param>
         /// <returns>Return hash keys response</returns>
-        public async Task<IEnumerable<HashKeysResponse>> HashKeysAsync(CacheServer server, HashKeysOptions options)
+        public HashKeysResponse HashKeys(CacheServer server, HashKeysOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(HashKeysOptions)}.{nameof(HashKeysOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashKeysStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new HashKeysResponse()
             {
-                return GetNoDatabaseResponse<HashKeysResponse>(server);
-            }
-            string script = $@"local pv=redis.call('HKEYS',{Keys(1)})
+                Success = true,
+                HashKeys = result.Select(c => { string key = c; return key; }).ToList(),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashKeysStatement(HashKeysOptions options)
+        {
+            var script = $@"local pv=redis.call('HKEYS',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -1884,19 +1988,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashKeysResponse> responses = new List<HashKeysResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashKeysResponse()
-                {
-                    Success = true,
-                    HashKeys = result.Select(c => { string key = c; return key; }).ToList(),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1912,7 +2010,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash increment options</param>
         /// <returns>Return hash increment response</returns>
-        public async Task<IEnumerable<HashIncrementResponse>> HashIncrementAsync(CacheServer server, HashIncrementOptions options)
+        public HashIncrementResponse HashIncrement(CacheServer server, HashIncrementOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -1922,27 +2020,12 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashIncrementOptions)}.{nameof(HashIncrementOptions.IncrementValue)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
-            {
-                return GetNoDatabaseResponse<HashIncrementResponse>(server);
-            }
-            var dataType = options.IncrementValue.GetType();
-            var typeCode = Type.GetTypeCode(dataType);
-            dynamic newValue = options.IncrementValue;
+            var database = RedisManager.GetDatabase(server);
             var cacheKey = options.Key.GetActualKey();
-            var keys = new RedisKey[1] { cacheKey };
-            var expire = RedisManager.GetExpiration(options.Expiration);
-            var values = new RedisValue[]
-            {
-                options.HashField,
-                options.IncrementValue,
-                options.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
-            };
-            string script = "";
-            bool integerValue = false;
+            var newValue = options.IncrementValue;
+            var dataType = options.IncrementValue.GetType();
+            var integerValue = false;
+            var typeCode = Type.GetTypeCode(dataType);
             switch (typeCode)
             {
                 case TypeCode.Boolean:
@@ -1958,33 +2041,52 @@ return pv";
                     integerValue = true;
                     break;
             }
+            var statement = GetHashIncrementStatement(options, integerValue, cacheKey);
+            var newCacheValue = ExecuteStatement(server, database, statement);
+            if (integerValue)
+            {
+                newValue = ObjectExtensions.ConvertTo((long)newCacheValue, dataType);
+            }
+            else
+            {
+                newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
+            }
+            return new HashIncrementResponse()
+            {
+                Success = true,
+                NewValue = newValue,
+                Key = cacheKey,
+                HashField = options.HashField,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashIncrementStatement(HashIncrementOptions options, bool integerValue, string cacheKey)
+        {
+            var keys = new RedisKey[1] { cacheKey };
+            var expire = RedisManager.GetExpiration(options.Expiration);
+            var values = new RedisValue[]
+            {
+                options.HashField,
+                options.IncrementValue,
+                options.Expiration==null,//refresh current time
+                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+            };
+            var script = "";
+
             script = @$"local obv=redis.call('{(integerValue ? "HINCRBY" : "HINCRBYFLOAT")}',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript(-2)}
 return obv";
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashIncrementResponse> responses = new List<HashIncrementResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var newCacheValue = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                if (integerValue)
-                {
-                    newValue = DataConverter.Convert((long)newCacheValue, dataType);
-                }
-                else
-                {
-                    newValue = DataConverter.Convert((double)newCacheValue, dataType);
-                }
-                responses.Add(new HashIncrementResponse()
-                {
-                    Success = true,
-                    NewValue = newValue,
-                    Key = cacheKey,
-                    HashField = options.HashField,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -1997,7 +2099,7 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash get options</param>
         /// <returns>Return hash get response</returns>
-        public async Task<IEnumerable<HashGetResponse>> HashGetAsync(CacheServer server, HashGetOptions options)
+        public HashGetResponse HashGet(CacheServer server, HashGetOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2007,12 +2109,21 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(HashGetOptions)}.{nameof(HashGetOptions.HashField)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashGetStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new HashGetResponse()
             {
-                return GetNoDatabaseResponse<HashGetResponse>(server);
-            }
-            string script = $@"local pv=redis.call('HGET',{Keys(1)},{Arg(1)})
+                Success = true,
+                Value = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashGetStatement(HashGetOptions options)
+        {
+            var script = $@"local pv=redis.call('HGET',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[1]
@@ -2028,19 +2139,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashGetResponse> responses = new List<HashGetResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashGetResponse()
-                {
-                    Success = true,
-                    Value = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2053,18 +2158,32 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash get all options</param>
         /// <returns>Return hash get all response</returns>
-        public async Task<IEnumerable<HashGetAllResponse>> HashGetAllAsync(CacheServer server, HashGetAllOptions options)
+        public HashGetAllResponse HashGetAll(CacheServer server, HashGetAllOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(HashGetAllOptions)}.{nameof(HashGetAllOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashGetAllStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            var values = new Dictionary<string, dynamic>(result.Length / 2);
+            for (var i = 0; i < result.Length; i += 2)
             {
-                return GetNoDatabaseResponse<HashGetAllResponse>(server);
+                values[result[i]] = result[i + 1];
             }
-            string script = $@"local pv=redis.call('HGETALL',{Keys(1)})
+            return new HashGetAllResponse()
+            {
+                Success = true,
+                HashValues = values,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashGetAllStatement(HashGetAllOptions options)
+        {
+            var script = $@"local pv=redis.call('HGETALL',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[1]
@@ -2079,24 +2198,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashGetAllResponse> responses = new List<HashGetAllResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                Dictionary<string, dynamic> values = new Dictionary<string, dynamic>(result.Length / 2);
-                for (var i = 0; i < result.Length; i += 2)
-                {
-                    values[result[i]] = result[i + 1];
-                }
-                responses.Add(new HashGetAllResponse()
-                {
-                    Success = true,
-                    HashValues = values,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2109,7 +2217,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Options</param>
         /// <returns>hash exists response</returns>
-        public async Task<IEnumerable<HashExistsResponse>> HashExistAsync(CacheServer server, HashExistsOptions options)
+        public HashExistsResponse HashExist(CacheServer server, HashExistsOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2119,12 +2227,21 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashExistsOptions)}.{nameof(HashExistsOptions.HashField)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashExistStatement(options);
+            var result = (int)ExecuteStatement(server, database, statement);
+            return new HashExistsResponse()
             {
-                return GetNoDatabaseResponse<HashExistsResponse>(server);
-            }
-            string script = $@"local pv=redis.call('HEXISTS',{Keys(1)},{Arg(1)})
+                Success = true,
+                HasField = result == 1,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashExistStatement(HashExistsOptions options)
+        {
+            var script = $@"local pv=redis.call('HEXISTS',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[1]
@@ -2140,19 +2257,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashExistsResponse> responses = new List<HashExistsResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (int)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashExistsResponse()
-                {
-                    Success = true,
-                    HasField = result == 1,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2166,7 +2277,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash delete options</param>
         /// <returns>Return hash delete response</returns>
-        public async Task<IEnumerable<HashDeleteResponse>> HashDeleteAsync(CacheServer server, HashDeleteOptions options)
+        public HashDeleteResponse HashDelete(CacheServer server, HashDeleteOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2176,11 +2287,19 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashDeleteOptions)}.{nameof(HashDeleteOptions.HashFields)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashDeleteStatement(options);
+            var result = (int)ExecuteStatement(server, database, statement);
+            return new HashDeleteResponse()
             {
-                return GetNoDatabaseResponse<HashDeleteResponse>(server);
-            }
+                Success = result > 0,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashDeleteStatement(HashDeleteOptions options)
+        {
             var values = new RedisValue[options.HashFields.Count + 3];
             var valueParameters = new string[options.HashFields.Count];
             for (var i = 0; i < options.HashFields.Count; i++)
@@ -2191,7 +2310,7 @@ return pv";
             values[values.Length - 3] = true;//refresh current time
             values[values.Length - 2] = RedisManager.AllowSlidingExpiration();//whether allow set refresh time
             values[values.Length - 1] = 0;//expire time seconds
-            string script = $@"local pv=redis.call('HDEL',{Keys(1)},{string.Join(",", valueParameters)})
+            var script = $@"local pv=redis.call('HDEL',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(valueParameters.Length - 2)}
 return pv";
             var keys = new RedisKey[1]
@@ -2199,18 +2318,13 @@ return pv";
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashDeleteResponse> responses = new List<HashDeleteResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (int)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new HashDeleteResponse()
-                {
-                    Success = result > 0,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2225,7 +2339,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash decrement options</param>
         /// <returns>Return hash decrement response</returns>
-        public async Task<IEnumerable<HashDecrementResponse>> HashDecrementAsync(CacheServer server, HashDecrementOptions options)
+        public HashDecrementResponse HashDecrement(CacheServer server, HashDecrementOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2235,26 +2349,11 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashDecrementOptions)}.{nameof(HashDecrementOptions.DecrementValue)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
-            {
-                return GetNoDatabaseResponse<HashDecrementResponse>(server);
-            }
+            var database = RedisManager.GetDatabase(server);
             var dataType = options.DecrementValue.GetType();
             var typeCode = Type.GetTypeCode(dataType);
             dynamic newValue = options.DecrementValue;
             var cacheKey = options.Key.GetActualKey();
-            var keys = new RedisKey[1] { cacheKey };
-            var expire = RedisManager.GetExpiration(options.Expiration);
-            var values = new RedisValue[]
-            {
-                options.HashField,
-                -options.DecrementValue,
-                options.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
-            };
-            string script = "";
             bool integerValue = false;
             switch (typeCode)
             {
@@ -2271,33 +2370,51 @@ return pv";
                     integerValue = true;
                     break;
             }
+            var statement = GetHashDecrementStatement(options, integerValue, cacheKey);
+            var newCacheValue = ExecuteStatement(server, database, statement);
+            if (integerValue)
+            {
+                newValue = ObjectExtensions.ConvertTo((long)newCacheValue, dataType);
+            }
+            else
+            {
+                newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
+            }
+            return new HashDecrementResponse()
+            {
+                Success = true,
+                NewValue = newValue,
+                Key = cacheKey,
+                HashField = options.HashField,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashDecrementStatement(HashDecrementOptions options, bool integerValue, string cacheKey)
+        {
+            var keys = new RedisKey[1] { cacheKey };
+            var expire = RedisManager.GetExpiration(options.Expiration);
+            var values = new RedisValue[]
+            {
+                options.HashField,
+                -options.DecrementValue,
+                options.Expiration==null,//refresh current time
+                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+            };
+            var script = "";
             script = @$"local obv=redis.call('{(integerValue ? "HINCRBY" : "HINCRBYFLOAT")}',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript(-2)}
 return obv";
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashDecrementResponse> responses = new List<HashDecrementResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var newCacheValue = await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                if (integerValue)
-                {
-                    newValue = DataConverter.Convert((long)newCacheValue, dataType);
-                }
-                else
-                {
-                    newValue = DataConverter.Convert((double)newCacheValue, dataType);
-                }
-                responses.Add(new HashDecrementResponse()
-                {
-                    Success = true,
-                    NewValue = newValue,
-                    Key = cacheKey,
-                    HashField = options.HashField,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2310,18 +2427,43 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Hash scan options</param>
         /// <returns>Return hash scan response</returns>
-        public async Task<IEnumerable<HashScanResponse>> HashScanAsync(CacheServer server, HashScanOptions options)
+        public HashScanResponse HashScan(CacheServer server, HashScanOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(HashScanOptions)}.{nameof(HashScanOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetHashScanStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            long newCursor = 0;
+            Dictionary<string, dynamic> values = null;
+            if (result.Length > 0)
             {
-                return GetNoDatabaseResponse<HashScanResponse>(server);
+                long.TryParse(result[0], out newCursor);
             }
-            string script = $@"{GetRefreshExpirationScript(1)}
+            if (result.Length > 1)
+            {
+                var valueArray = ((string)result[1]).LSplit(",", false);
+                values = new Dictionary<string, dynamic>(valueArray.Length / 2);
+                for (var i = 0; i < valueArray.Length; i += 2)
+                {
+                    values[valueArray[i]] = valueArray[i + 1];
+                }
+            }
+            return new HashScanResponse()
+            {
+                Success = true,
+                Cursor = newCursor,
+                HashValues = values ?? new Dictionary<string, dynamic>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetHashScanStatement(HashScanOptions options)
+        {
+            var script = $@"{GetRefreshExpirationScript(1)}
 local obv={{}}
 for i,v in pairs(redis.call('HSCAN',{Keys(1)},{Arg(1)},'MATCH',{Arg(2)},'COUNT',{Arg(3)})) do
     if i==2
@@ -2351,35 +2493,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<HashScanResponse> responses = new List<HashScanResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                long newCursor = 0;
-                Dictionary<string, dynamic> values = null;
-                if (result.Length > 0)
-                {
-                    long.TryParse(result[0], out newCursor);
-                }
-                if (result.Length > 1)
-                {
-                    var valueArray = ((string)result[1]).LSplit(",", false);
-                    values = new Dictionary<string, dynamic>(valueArray.Length / 2);
-                    for (var i = 0; i < valueArray.Length; i += 2)
-                    {
-                        values[valueArray[i]] = valueArray[i + 1];
-                    }
-                }
-                responses.Add(new HashScanResponse()
-                {
-                    Success = true,
-                    Cursor = newCursor,
-                    HashValues = values ?? new Dictionary<string, dynamic>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2397,7 +2517,7 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set remove options</param>
         /// <returns>Return set remove response</returns>
-        public async Task<IEnumerable<SetRemoveResponse>> SetRemoveAsync(CacheServer server, SetRemoveOptions options)
+        public SetRemoveResponse SetRemove(CacheServer server, SetRemoveOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2407,11 +2527,20 @@ return obv";
             {
                 throw new ArgumentException($"{nameof(SetRemoveOptions)}.{nameof(SetRemoveOptions.RemoveMembers)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetRemoveStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SetRemoveResponse()
             {
-                return GetNoDatabaseResponse<SetRemoveResponse>(server);
-            }
+                Success = true,
+                RemoveCount = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetRemoveStatement(SetRemoveOptions options)
+        {
             var values = new RedisValue[options.RemoveMembers.Count + 3];
             var valueParameters = new string[options.RemoveMembers.Count];
             for (var i = 0; i < options.RemoveMembers.Count; i++)
@@ -2422,7 +2551,7 @@ return obv";
             values[values.Length - 3] = true;//refresh current time
             values[values.Length - 2] = RedisManager.AllowSlidingExpiration();//whether allow set refresh time
             values[values.Length - 1] = 0;//expire time seconds
-            string script = $@"local obv=redis.call('SREM',{Keys(1)},{string.Join(",", valueParameters)})
+            var script = $@"local obv=redis.call('SREM',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(options.RemoveMembers.Count - 2)}
 return obv";
             var keys = new RedisKey[]
@@ -2430,19 +2559,13 @@ return obv";
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetRemoveResponse> responses = new List<SetRemoveResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetRemoveResponse()
-                {
-                    Success = true,
-                    RemoveCount = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2458,18 +2581,27 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set random members options</param>
         /// <returns>Return set random members response</returns>
-        public async Task<IEnumerable<SetRandomMembersResponse>> SetRandomMembersAsync(CacheServer server, SetRandomMembersOptions options)
+        public SetRandomMembersResponse SetRandomMembers(CacheServer server, SetRandomMembersOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SetRandomMembersOptions)}.{nameof(SetRandomMembersOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetRandomMembersStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SetRandomMembersResponse()
             {
-                return GetNoDatabaseResponse<SetRandomMembersResponse>(server);
-            }
-            string script = $@"local pv=redis.call('SRANDMEMBER',{Keys(1)},{Arg(1)})
+                Success = true,
+                Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetRandomMembersStatement(SetRandomMembersOptions options)
+        {
+            var script = $@"local pv=redis.call('SRANDMEMBER',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[]
@@ -2485,19 +2617,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetRandomMembersResponse> responses = new List<SetRandomMembersResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetRandomMembersResponse()
-                {
-                    Success = true,
-                    Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2510,18 +2636,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set random member options</param>
         /// <returns>Return set random member</returns>
-        public async Task<IEnumerable<SetRandomMemberResponse>> SetRandomMemberAsync(CacheServer server, SetRandomMemberOptions options)
+        public SetRandomMemberResponse SetRandomMember(CacheServer server, SetRandomMemberOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SetRandomMemberOptions)}.{nameof(SetRandomMemberOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetRandomMemberStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new SetRandomMemberResponse()
             {
-                return GetNoDatabaseResponse<SetRandomMemberResponse>(server);
-            }
-            string script = $@"local pv=redis.call('SRANDMEMBER',{Keys(1)})
+                Success = true,
+                Member = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetRandomMemberStatement(SetRandomMemberOptions options)
+        {
+            var script = $@"local pv=redis.call('SRANDMEMBER',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -2533,22 +2668,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetRandomMemberResponse> responses = new List<SetRandomMemberResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetRandomMemberResponse()
-                {
-                    Success = true,
-                    Member = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2561,18 +2689,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set pop options</param>
         /// <returns>Return set pop response</returns>
-        public async Task<IEnumerable<SetPopResponse>> SetPopAsync(CacheServer server, SetPopOptions options)
+        public SetPopResponse SetPop(CacheServer server, SetPopOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SetPopOptions)}.{nameof(SetPopOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetPopStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new SetPopResponse()
             {
-                return GetNoDatabaseResponse<SetPopResponse>(server);
-            }
-            string script = $@"local pv=redis.call('SPOP',{Keys(1)})
+                Success = true,
+                PopValue = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetPopStatement(SetPopOptions options)
+        {
+            var script = $@"local pv=redis.call('SPOP',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -2584,22 +2721,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetPopResponse> responses = new List<SetPopResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetPopResponse()
-                {
-                    Success = true,
-                    PopValue = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2615,7 +2745,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set move options</param>
         /// <returns>Return set move response</returns>
-        public async Task<IEnumerable<SetMoveResponse>> SetMoveAsync(CacheServer server, SetMoveOptions options)
+        public SetMoveResponse SetMove(CacheServer server, SetMoveOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.SourceKey))
             {
@@ -2629,15 +2759,23 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetMoveOptions)}.{nameof(SetMoveOptions.MoveMember)}");
             }
-            string script = $@"local pv=redis.call('SMOVE',{Keys(1)},{Keys(2)},{Arg(1)})
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetMoveStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new SetMoveResponse()
+            {
+                Success = result == "1",
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetMoveStatement(SetMoveOptions options)
+        {
+            var script = $@"local pv=redis.call('SMOVE',{Keys(1)},{Keys(2)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 {GetRefreshExpirationScript(2, 1)}
 return pv";
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
-            {
-                return GetNoDatabaseResponse<SetMoveResponse>(server);
-            }
             var allowSliding = RedisManager.AllowSlidingExpiration();
             var expire = RedisManager.GetExpiration(options.Expiration);
             var keys = new RedisKey[]
@@ -2656,18 +2794,13 @@ return pv";
                 RedisManager.GetTotalSeconds(expire.Item2)//expire time seconds-destination key
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetMoveResponse> responses = new List<SetMoveResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetMoveResponse()
-                {
-                    Success = result == "1",
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2680,18 +2813,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set members options</param>
         /// <returns>Return set members response</returns>
-        public async Task<IEnumerable<SetMembersResponse>> SetMembersAsync(CacheServer server, SetMembersOptions options)
+        public SetMembersResponse SetMembers(CacheServer server, SetMembersOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SetMembersOptions)}.{nameof(SetMembersOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetMembersStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SetMembersResponse()
             {
-                return GetNoDatabaseResponse<SetMembersResponse>(server);
-            }
-            string script = $@"local pv=redis.call('SMEMBERS',{Keys(1)})
+                Success = true,
+                Members = result?.Select(c => { string member = c; return member; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetMembersStatement(SetMembersOptions options)
+        {
+            var script = $@"local pv=redis.call('SMEMBERS',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -2703,22 +2845,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetMembersResponse> responses = new List<SetMembersResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetMembersResponse()
-                {
-                    Success = true,
-                    Members = result?.Select(c => { string member = c; return member; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2731,18 +2866,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set length options</param>
         /// <returns>Return set length response</returns>
-        public async Task<IEnumerable<SetLengthResponse>> SetLengthAsync(CacheServer server, SetLengthOptions options)
+        public SetLengthResponse SetLength(CacheServer server, SetLengthOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SetLengthOptions)}.{nameof(SetLengthOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetLengthStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SetLengthResponse()
             {
-                return GetNoDatabaseResponse<SetLengthResponse>(server);
-            }
-            string script = $@"local pv=redis.call('SCARD',{Keys(1)})
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetLengthStatement(SetLengthOptions options)
+        {
+            var script = $@"local pv=redis.call('SCARD',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -2754,22 +2898,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetLengthResponse> responses = new List<SetLengthResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetLengthResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2782,7 +2919,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set contains options</param>
         /// <returns>Return set contains response</returns>
-        public async Task<IEnumerable<SetContainsResponse>> SetContainsAsync(CacheServer server, SetContainsOptions options)
+        public SetContainsResponse SetContains(CacheServer server, SetContainsOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2792,12 +2929,21 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetContainsOptions)}.{nameof(SetContainsOptions.Member)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetContainsStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new SetContainsResponse()
             {
-                return GetNoDatabaseResponse<SetContainsResponse>(server);
-            }
-            string script = $@"local pv=redis.call('SISMEMBER',{Keys(1)},{Arg(1)})
+                Success = true,
+                ContainsValue = result == "1",
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetContainsStatement(SetContainsOptions options)
+        {
+            var script = $@"local pv=redis.call('SISMEMBER',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[]
@@ -2810,22 +2956,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetContainsResponse> responses = new List<SetContainsResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetContainsResponse()
-                {
-                    Success = true,
-                    ContainsValue = result == "1",
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2839,17 +2978,26 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set combine options</param>
         /// <returns>Return set combine response</returns>
-        public async Task<IEnumerable<SetCombineResponse>> SetCombineAsync(CacheServer server, SetCombineOptions options)
+        public SetCombineResponse SetCombine(CacheServer server, SetCombineOptions options)
         {
             if (options?.Keys.IsNullOrEmpty() ?? true)
             {
                 throw new ArgumentNullException($"{nameof(SetCombineOptions)}.{nameof(SetCombineOptions.Keys)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetCombineStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SetCombineResponse()
             {
-                return GetNoDatabaseResponse<SetCombineResponse>(server);
-            }
+                Success = true,
+                CombineValues = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetCombineStatement(SetCombineOptions options)
+        {
             var keys = new RedisKey[options.Keys.Count];
             var keyParameters = new List<string>(options.Keys.Count);
             for (var i = 0; i < options.Keys.Count; i++)
@@ -2857,7 +3005,7 @@ return pv";
                 keys[i] = options.Keys[i].GetActualKey();
                 keyParameters.Add($"{Keys(i + 1)}");
             }
-            string script = $@"local pv=redis.call('{RedisManager.GetSetCombineCommand(options.CombineOperation)}',{string.Join(",", keyParameters)})
+            var script = $@"local pv=redis.call('{RedisManager.GetSetCombineCommand(options.CombineOperation)}',{string.Join(",", keyParameters)})
 {GetRefreshExpirationScript(-2, keyCount: keys.Length)}
 return pv";
             var parameters = new RedisValue[]
@@ -2865,22 +3013,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetCombineResponse> responses = new List<SetCombineResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetCombineResponse()
-                {
-                    Success = true,
-                    CombineValues = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2894,7 +3035,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set combine and store options</param>
         /// <returns>Return set combine and store response</returns>
-        public async Task<IEnumerable<SetCombineAndStoreResponse>> SetCombineAndStoreAsync(CacheServer server, SetCombineAndStoreOptions options)
+        public SetCombineAndStoreResponse SetCombineAndStore(CacheServer server, SetCombineAndStoreOptions options)
         {
             if (options?.SourceKeys.IsNullOrEmpty() ?? true)
             {
@@ -2904,11 +3045,20 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetCombineAndStoreOptions)}.{nameof(SetCombineAndStoreOptions.DestinationKey)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetCombineAndStoreStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SetCombineAndStoreResponse()
             {
-                return GetNoDatabaseResponse<SetCombineAndStoreResponse>(server);
-            }
+                Success = true,
+                Count = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetCombineAndStoreStatement(SetCombineAndStoreOptions options)
+        {
             var keys = new RedisKey[options.SourceKeys.Count + 1];
             var keyParameters = new List<string>(options.SourceKeys.Count + 1);
             keys[0] = options.DestinationKey.GetActualKey();
@@ -2918,7 +3068,7 @@ return pv";
                 keys[i + 1] = options.SourceKeys[i].GetActualKey();
                 keyParameters.Add($"{Keys(i + 2)}");
             }
-            string script = $@"local pv=redis.call('{RedisManager.GetSetCombineCommand(options.CombineOperation)}STORE',{string.Join(",", keyParameters)})
+            var script = $@"local pv=redis.call('{RedisManager.GetSetCombineCommand(options.CombineOperation)}STORE',{string.Join(",", keyParameters)})
 {GetRefreshExpirationScript(-2, 1, keyCount: keys.Length - 1)}
 {GetRefreshExpirationScript(1)}
 return pv";
@@ -2934,19 +3084,13 @@ return pv";
                 RedisManager.GetTotalSeconds(expire.Item2)
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetCombineAndStoreResponse> responses = new List<SetCombineAndStoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetCombineAndStoreResponse()
-                {
-                    Success = true,
-                    Count = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -2961,7 +3105,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Set add options</param>
         /// <returns>Return set add response</returns>
-        public async Task<IEnumerable<SetAddResponse>> SetAddAsync(CacheServer server, SetAddOptions options)
+        public SetAddResponse SetAdd(CacheServer server, SetAddOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -2971,11 +3115,19 @@ return pv";
             {
                 throw new ArgumentException($"{nameof(SetAddOptions)}.{nameof(SetAddOptions.Members)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSetAddStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SetAddResponse()
             {
-                return GetNoDatabaseResponse<SetAddResponse>(server);
-            }
+                Success = result > 0,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSetAddStatement(SetAddOptions options)
+        {
             var expire = RedisManager.GetExpiration(options.Expiration);
             var values = new RedisValue[options.Members.Count + 3];
             var valueParameters = new string[options.Members.Count];
@@ -2986,8 +3138,8 @@ return pv";
             }
             values[values.Length - 3] = options.Expiration == null;//refresh current time
             values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = expire.Item2?.TotalSeconds ?? 0;//expire time seconds
-            string script = $@"local obv=redis.call('SADD',{Keys(1)},{string.Join(",", valueParameters)})
+            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            var script = $@"local obv=redis.call('SADD',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(options.Members.Count - 2)}
 return obv";
             var keys = new RedisKey[]
@@ -2995,18 +3147,13 @@ return obv";
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SetAddResponse> responses = new List<SetAddResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SetAddResponse()
-                {
-                    Success = result > 0,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3024,7 +3171,7 @@ return obv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Sorted set score options</param>
         /// <returns>Return sorted set score response</returns>
-        public async Task<IEnumerable<SortedSetScoreResponse>> SortedSetScoreAsync(CacheServer server, SortedSetScoreOptions options)
+        public SortedSetScoreResponse SortedSetScore(CacheServer server, SortedSetScoreOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -3034,12 +3181,21 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetScoreOptions)}.{nameof(SortedSetScoreOptions.Member)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetScoreStatement(options);
+            var result = (double?)ExecuteStatement(server, database, statement);
+            return new SortedSetScoreResponse()
             {
-                return GetNoDatabaseResponse<SortedSetScoreResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZSCORE',{Keys(1)},{Arg(1)})
+                Success = true,
+                Score = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetScoreStatement(SortedSetScoreOptions options)
+        {
+            var script = $@"local pv=redis.call('ZSCORE',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[]
@@ -3052,22 +3208,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetScoreResponse> responses = new List<SortedSetScoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (double?)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetScoreResponse()
-                {
-                    Success = true,
-                    Score = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3082,7 +3231,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Sorted set remove range by value options</param>
         /// <returns>Return sorted set remove range by value response</returns>
-        public async Task<IEnumerable<SortedSetRemoveRangeByValueResponse>> SortedSetRemoveRangeByValueAsync(CacheServer server, SortedSetRemoveRangeByValueOptions options)
+        public SortedSetRemoveRangeByValueResponse SortedSetRemoveRangeByValue(CacheServer server, SortedSetRemoveRangeByValueOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -3096,12 +3245,21 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueOptions)}.{nameof(SortedSetRemoveRangeByValueOptions.MaxValue)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRemoveRangeByValueStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetRemoveRangeByValueResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRemoveRangeByValueResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZREMRANGEBYLEX',{Keys(1)},{Arg(1)},{Arg(2)})
+                RemoveCount = result,
+                Success = true,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRemoveRangeByValueStatement(SortedSetRemoveRangeByValueOptions options)
+        {
+            var script = $@"local pv=redis.call('ZREMRANGEBYLEX',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3118,19 +3276,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRemoveRangeByValueResponse> responses = new List<SortedSetRemoveRangeByValueResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRemoveRangeByValueResponse()
-                {
-                    RemoveCount = result,
-                    Success = true,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3144,18 +3296,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Sorted set remove range by score options</param>
         /// <returns>Return sorted set remove range by score response</returns>
-        public async Task<IEnumerable<SortedSetRemoveRangeByScoreResponse>> SortedSetRemoveRangeByScoreAsync(CacheServer server, SortedSetRemoveRangeByScoreOptions options)
+        public SortedSetRemoveRangeByScoreResponse SortedSetRemoveRangeByScore(CacheServer server, SortedSetRemoveRangeByScoreOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByScoreOptions)}.{nameof(SortedSetRemoveRangeByScoreOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRemoveRangeByScoreStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetRemoveRangeByScoreResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRemoveRangeByScoreResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZREMRANGEBYSCORE',{Keys(1)},{Arg(1)},{Arg(2)})
+                RemoveCount = result,
+                Success = true,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRemoveRangeByScoreStatement(SortedSetRemoveRangeByScoreOptions options)
+        {
+            var script = $@"local pv=redis.call('ZREMRANGEBYSCORE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3169,22 +3330,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRemoveRangeByScoreResponse> responses = new List<SortedSetRemoveRangeByScoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRemoveRangeByScoreResponse()
-                {
-                    RemoveCount = result,
-                    Success = true,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3202,18 +3356,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Sorted set remove range by rank options</param>
         /// <returns>Return sorted set remove range by rank response</returns>
-        public async Task<IEnumerable<SortedSetRemoveRangeByRankResponse>> SortedSetRemoveRangeByRankAsync(CacheServer server, SortedSetRemoveRangeByRankOptions options)
+        public SortedSetRemoveRangeByRankResponse SortedSetRemoveRangeByRank(CacheServer server, SortedSetRemoveRangeByRankOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByRankOptions)}.{nameof(SortedSetRemoveRangeByRankOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRemoveRangeByRankStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetRemoveRangeByRankResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRemoveRangeByRankResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZREMRANGEBYRANK',{Keys(1)},{Arg(1)},{Arg(2)})
+                RemoveCount = result,
+                Success = true,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRemoveRangeByRankStatement(SortedSetRemoveRangeByRankOptions options)
+        {
+            var script = $@"local pv=redis.call('ZREMRANGEBYRANK',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3227,22 +3390,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRemoveRangeByRankResponse> responses = new List<SortedSetRemoveRangeByRankResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRemoveRangeByRankResponse()
-                {
-                    RemoveCount = result,
-                    Success = true,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3256,7 +3412,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Sorted set remove options</param>
         /// <returns>sorted set remove response</returns>
-        public async Task<IEnumerable<SortedSetRemoveResponse>> SortedSetRemoveAsync(CacheServer server, SortedSetRemoveOptions options)
+        public SortedSetRemoveResponse SortedSetRemove(CacheServer server, SortedSetRemoveOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -3266,11 +3422,20 @@ return pv";
             {
                 throw new ArgumentException($"{nameof(SortedSetRemoveOptions)}.{nameof(SortedSetRemoveOptions.RemoveMembers)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRemoveStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetRemoveResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRemoveResponse>(server);
-            }
+                Success = true,
+                RemoveCount = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRemoveStatement(SortedSetRemoveOptions options)
+        {
             var values = new RedisValue[options.RemoveMembers.Count + 3];
             var valueParameters = new string[options.RemoveMembers.Count];
             for (var i = 0; i < options.RemoveMembers.Count; i++)
@@ -3281,7 +3446,7 @@ return pv";
             values[values.Length - 3] = true;//refresh current time
             values[values.Length - 2] = RedisManager.AllowSlidingExpiration();//whether allow set refresh time
             values[values.Length - 1] = 0;//expire time seconds
-            string script = $@"local obv=redis.call('ZREM',{Keys(1)},{string.Join(",", valueParameters)})
+            var script = $@"local obv=redis.call('ZREM',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(options.RemoveMembers.Count - 2)}
 return obv";
             var keys = new RedisKey[]
@@ -3289,19 +3454,13 @@ return obv";
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRemoveResponse> responses = new List<SortedSetRemoveResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRemoveResponse()
-                {
-                    Success = true,
-                    RemoveCount = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3316,7 +3475,7 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sorted set rank response</returns>
-        public async Task<IEnumerable<SortedSetRankResponse>> SortedSetRankAsync(CacheServer server, SortedSetRankOptions options)
+        public SortedSetRankResponse SortedSetRank(CacheServer server, SortedSetRankOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -3326,12 +3485,21 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRankOptions)}.{nameof(SortedSetRankOptions.Member)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRankStatement(options);
+            var result = (long?)ExecuteStatement(server, database, statement);
+            return new SortedSetRankResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRankResponse>(server);
-            }
-            string script = $@"local pv=redis.call('Z{(options.Order == CacheOrder.Descending ? "REV" : "")}RANK',{Keys(1)},{Arg(1)})
+                Success = true,
+                Rank = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRankStatement(SortedSetRankOptions options)
+        {
+            var script = $@"local pv=redis.call('Z{(options.Order == CacheOrder.Descending ? "REV" : "")}RANK',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[]
@@ -3344,22 +3512,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRankResponse> responses = new List<SortedSetRankResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long?)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRankResponse()
-                {
-                    Success = true,
-                    Rank = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3374,7 +3535,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Sorted set range by value options</param>
         /// <returns>sorted set range by value response</returns>
-        public async Task<IEnumerable<SortedSetRangeByValueResponse>> SortedSetRangeByValueAsync(CacheServer server, SortedSetRangeByValueOptions options)
+        public SortedSetRangeByValueResponse SortedSetRangeByValue(CacheServer server, SortedSetRangeByValueOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -3388,11 +3549,20 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueOptions)}.{nameof(SortedSetRemoveRangeByValueOptions.MaxValue)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRangeByValueStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SortedSetRangeByValueResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRangeByValueResponse>(server);
-            }
+                Success = true,
+                Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRangeByValueStatement(SortedSetRangeByValueOptions options)
+        {
             var command = "ZRANGEBYLEX";
             string beginValue = string.Empty;
             string endValue = string.Empty;
@@ -3407,7 +3577,7 @@ return pv";
                 beginValue = FormatSortedSetRangeBoundary(options.MinValue, true, options.Exclude);
                 endValue = FormatSortedSetRangeBoundary(options.MaxValue, false, options.Exclude);
             }
-            string script = $@"local pv=redis.call('{command}',{Keys(1)},{Arg(1)},{Arg(2)},'LIMIT',{Arg(3)},{Arg(4)})
+            var script = $@"local pv=redis.call('{command}',{Keys(1)},{Arg(1)},{Arg(2)},'LIMIT',{Arg(3)},{Arg(4)})
 {GetRefreshExpirationScript(2)}
 return pv";
             var keys = new RedisKey[]
@@ -3426,19 +3596,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRangeByValueResponse> responses = new List<SortedSetRangeByValueResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRangeByValueResponse()
-                {
-                    Success = true,
-                    Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3455,17 +3619,37 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Option</param>
         /// <returns>Return sorted set range by score with scores response</returns>
-        public async Task<IEnumerable<SortedSetRangeByScoreWithScoresResponse>> SortedSetRangeByScoreWithScoresAsync(CacheServer server, SortedSetRangeByScoreWithScoresOptions options)
+        public SortedSetRangeByScoreWithScoresResponse SortedSetRangeByScoreWithScores(CacheServer server, SortedSetRangeByScoreWithScoresOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreWithScoresOptions)}.{nameof(SortedSetRangeByScoreWithScoresOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRangeByScoreWithScoresStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
+            for (var i = 0; i < result.Length; i += 2)
             {
-                return GetNoDatabaseResponse<SortedSetRangeByScoreWithScoresResponse>(server);
+                var value = result[i];
+                double.TryParse(result[i + 1], out var score);
+                members.Add(new SortedSetMember
+                {
+                    Value = value,
+                    Score = score
+                });
             }
+            return new SortedSetRangeByScoreWithScoresResponse()
+            {
+                Success = true,
+                Members = members,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRangeByScoreWithScoresStatement(SortedSetRangeByScoreWithScoresOptions options)
+        {
             var command = "ZRANGEBYSCORE";
             string beginValue = "";
             string endValue = "";
@@ -3480,7 +3664,7 @@ return pv";
                 beginValue = FormatSortedSetScoreRangeBoundary(options.Start, true, options.Exclude);
                 endValue = FormatSortedSetScoreRangeBoundary(options.Stop, false, options.Exclude);
             }
-            string script = $@"local pv=redis.call('{command}',{Keys(1)},{Arg(1)},{Arg(2)},'WITHSCORES','LIMIT',{Arg(3)},{Arg(4)})
+            var script = $@"local pv=redis.call('{command}',{Keys(1)},{Arg(1)},{Arg(2)},'WITHSCORES','LIMIT',{Arg(3)},{Arg(4)})
 {GetRefreshExpirationScript(2)}
 return pv";
             var keys = new RedisKey[]
@@ -3499,30 +3683,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRangeByScoreWithScoresResponse> responses = new List<SortedSetRangeByScoreWithScoresResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
-                for (var i = 0; i < result.Length; i += 2)
-                {
-                    var value = result[i];
-                    double.TryParse(result[i + 1], out var score);
-                    members.Add(new SortedSetMember
-                    {
-                        Value = value,
-                        Score = score
-                    });
-                }
-                responses.Add(new SortedSetRangeByScoreWithScoresResponse()
-                {
-                    Success = true,
-                    Members = members,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3539,17 +3706,26 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sorted set range by score response</returns>
-        public async Task<IEnumerable<SortedSetRangeByScoreResponse>> SortedSetRangeByScoreAsync(CacheServer server, SortedSetRangeByScoreOptions options)
+        public SortedSetRangeByScoreResponse SortedSetRangeByScore(CacheServer server, SortedSetRangeByScoreOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreOptions)}.{nameof(SortedSetRangeByScoreOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRangeByScoreStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SortedSetRangeByScoreResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRangeByScoreResponse>(server);
-            }
+                Success = true,
+                Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRangeByScoreStatement(SortedSetRangeByScoreOptions options)
+        {
             var command = "ZRANGEBYSCORE";
             string beginValue = "";
             string endValue = "";
@@ -3564,7 +3740,7 @@ return pv";
                 beginValue = FormatSortedSetScoreRangeBoundary(options.Start, true, options.Exclude);
                 endValue = FormatSortedSetScoreRangeBoundary(options.Stop, false, options.Exclude);
             }
-            string script = $@"local pv=redis.call('{command}',{Keys(1)},{Arg(1)},{Arg(2)},'LIMIT',{Arg(3)},{Arg(4)})
+            var script = $@"local pv=redis.call('{command}',{Keys(1)},{Arg(1)},{Arg(2)},'LIMIT',{Arg(3)},{Arg(4)})
 {GetRefreshExpirationScript(2)}
 return pv";
             var keys = new RedisKey[]
@@ -3583,19 +3759,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRangeByScoreResponse> responses = new List<SortedSetRangeByScoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRangeByScoreResponse()
-                {
-                    Success = true,
-                    Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3614,18 +3784,38 @@ return pv";
         /// <param name="server">Cacheserver</param>
         /// <param name="options">Option</param>
         /// <returns>Return sorted set range by rank with scores response</returns>
-        public async Task<IEnumerable<SortedSetRangeByRankWithScoresResponse>> SortedSetRangeByRankWithScoresAsync(CacheServer server, SortedSetRangeByRankWithScoresOptions options)
+        public SortedSetRangeByRankWithScoresResponse SortedSetRangeByRankWithScores(CacheServer server, SortedSetRangeByRankWithScoresOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByRankWithScoresOptions)}.{nameof(SortedSetRangeByRankWithScoresOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRangeByRankWithScoresStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
+            for (var i = 0; i < result.Length; i += 2)
             {
-                return GetNoDatabaseResponse<SortedSetRangeByRankWithScoresResponse>(server);
+                var value = result[i];
+                double.TryParse(result[i + 1], out var score);
+                members.Add(new SortedSetMember
+                {
+                    Value = value,
+                    Score = score
+                });
             }
-            string script = $@"local pv=redis.call('Z{(options.Order == CacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)},'WITHSCORES')
+            return new SortedSetRangeByRankWithScoresResponse()
+            {
+                Success = true,
+                Members = members,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRangeByRankWithScoresStatement(SortedSetRangeByRankWithScoresOptions options)
+        {
+            var script = $@"local pv=redis.call('Z{(options.Order == CacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)},'WITHSCORES')
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3642,30 +3832,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRangeByRankWithScoresResponse> responses = new List<SortedSetRangeByRankWithScoresResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
-                for (var i = 0; i < result.Length; i += 2)
-                {
-                    var value = result[i];
-                    double.TryParse(result[i + 1], out var score);
-                    members.Add(new SortedSetMember
-                    {
-                        Value = value,
-                        Score = score
-                    });
-                }
-                responses.Add(new SortedSetRangeByRankWithScoresResponse()
-                {
-                    Success = true,
-                    Members = members,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3684,18 +3857,27 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sorted set range by rank response</returns>
-        public async Task<IEnumerable<SortedSetRangeByRankResponse>> SortedSetRangeByRankAsync(CacheServer server, SortedSetRangeByRankOptions options)
+        public SortedSetRangeByRankResponse SortedSetRangeByRank(CacheServer server, SortedSetRangeByRankOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByRankOptions)}.{nameof(SortedSetRangeByRankOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetRangeByRankStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SortedSetRangeByRankResponse()
             {
-                return GetNoDatabaseResponse<SortedSetRangeByRankResponse>(server);
-            }
-            string script = $@"local pv=redis.call('Z{(options.Order == CacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetRangeByRankStatement(SortedSetRangeByRankOptions options)
+        {
+            var script = $@"local pv=redis.call('Z{(options.Order == CacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3712,19 +3894,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetRangeByRankResponse> responses = new List<SortedSetRangeByRankResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetRangeByRankResponse()
-                {
-                    Success = true,
-                    Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3739,7 +3915,7 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Option</param>
         /// <returns>Return sorted set lenght by value response</returns>
-        public async Task<IEnumerable<SortedSetLengthByValueResponse>> SortedSetLengthByValueAsync(CacheServer server, SortedSetLengthByValueOptions options)
+        public SortedSetLengthByValueResponse SortedSetLengthByValue(CacheServer server, SortedSetLengthByValueOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -3753,12 +3929,21 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetLengthByValueOptions)}.{nameof(SortedSetLengthByValueOptions.MaxValue)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetLengthByValueStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetLengthByValueResponse()
             {
-                return GetNoDatabaseResponse<SortedSetLengthByValueResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZLEXCOUNT',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetLengthByValueStatement(SortedSetLengthByValueOptions options)
+        {
+            var script = $@"local pv=redis.call('ZLEXCOUNT',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3772,22 +3957,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetLengthByValueResponse> responses = new List<SortedSetLengthByValueResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetLengthByValueResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3801,18 +3979,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Option</param>
         /// <returns>Return sorted set length response</returns>
-        public async Task<IEnumerable<SortedSetLengthResponse>> SortedSetLengthAsync(CacheServer server, SortedSetLengthOptions options)
+        public SortedSetLengthResponse SortedSetLength(CacheServer server, SortedSetLengthOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetLengthByValueOptions)}.{nameof(SortedSetLengthByValueOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetLengthStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetLengthResponse()
             {
-                return GetNoDatabaseResponse<SortedSetLengthResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZCARD',{Keys(1)})
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetLengthStatement(SortedSetLengthOptions options)
+        {
+            var script = $@"local pv=redis.call('ZCARD',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
             var keys = new RedisKey[]
@@ -3824,22 +4011,15 @@ return pv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetLengthResponse> responses = new List<SortedSetLengthResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetLengthResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3854,17 +4034,26 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Option</param>
         /// <returns>Return sorted set increment response</returns>
-        public async Task<IEnumerable<SortedSetIncrementResponse>> SortedSetIncrementAsync(CacheServer server, SortedSetIncrementOptions options)
+        public SortedSetIncrementResponse SortedSetIncrement(CacheServer server, SortedSetIncrementOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetIncrementOptions)}.{nameof(SortedSetIncrementOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetIncrementStatement(options);
+            var result = (double)ExecuteStatement(server, database, statement);
+            return new SortedSetIncrementResponse()
             {
-                return GetNoDatabaseResponse<SortedSetIncrementResponse>(server);
-            }
+                Success = true,
+                NewScore = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetIncrementStatement(SortedSetIncrementOptions options)
+        {
             var expire = RedisManager.GetExpiration(options.Expiration);
             var keys = new RedisKey[]
             {
@@ -3877,25 +4066,18 @@ return pv";
                 options.Expiration==null,//refresh current time
                 expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
-
              };
-            string script = $@"local pv=redis.call('ZINCRBY',{Keys(1)},{Arg(1)},{Arg(2)})
+            var script = $@"local pv=redis.call('ZINCRBY',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetIncrementResponse> responses = new List<SortedSetIncrementResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (double)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetIncrementResponse()
-                {
-                    Success = true,
-                    NewScore = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3910,18 +4092,27 @@ return pv";
         /// <param name="server">Cache server</param>
         /// <param name="options">Option</param>
         /// <returns>Return sorted set decrement response</returns>
-        public async Task<IEnumerable<SortedSetDecrementResponse>> SortedSetDecrementAsync(CacheServer server, SortedSetDecrementOptions options)
+        public SortedSetDecrementResponse SortedSetDecrement(CacheServer server, SortedSetDecrementOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortedSetDecrementOptions)}.{nameof(SortedSetDecrementOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetDecrementStatement(options);
+            var result = (double)ExecuteStatement(server, database, statement);
+            return new SortedSetDecrementResponse()
             {
-                return GetNoDatabaseResponse<SortedSetDecrementResponse>(server);
-            }
-            string script = $@"local pv=redis.call('ZINCRBY',{Keys(1)},{Arg(1)},{Arg(2)})
+                Success = true,
+                NewScore = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetDecrementStatement(SortedSetDecrementOptions options)
+        {
+            var script = $@"local pv=redis.call('ZINCRBY',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -3939,19 +4130,13 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetDecrementResponse> responses = new List<SortedSetDecrementResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (double)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetDecrementResponse()
-                {
-                    Success = true,
-                    NewScore = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -3966,7 +4151,7 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sorted set combine and store response</returns>
-        public async Task<IEnumerable<SortedSetCombineAndStoreResponse>> SortedSetCombineAndStoreAsync(CacheServer server, SortedSetCombineAndStoreOptions options)
+        public SortedSetCombineAndStoreResponse SortedSetCombineAndStore(CacheServer server, SortedSetCombineAndStoreOptions options)
         {
             if (options?.SourceKeys.IsNullOrEmpty() ?? true)
             {
@@ -3976,14 +4161,23 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetCombineAndStoreOptions)}.{nameof(SortedSetCombineAndStoreOptions.DestinationKey)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetCombineAndStoreStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetCombineAndStoreResponse()
             {
-                return GetNoDatabaseResponse<SortedSetCombineAndStoreResponse>(server);
-            }
+                Success = true,
+                NewSetLength = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetCombineAndStoreStatement(SortedSetCombineAndStoreOptions options)
+        {
             var keys = new RedisKey[options.SourceKeys.Count + 1];
             var keyParameters = new List<string>(options.SourceKeys.Count);
-            double[] weights = new double[options.SourceKeys.Count];
+            var weights = new double[options.SourceKeys.Count];
             keys[0] = options.DestinationKey.GetActualKey();
             for (var i = 0; i < options.SourceKeys.Count; i++)
             {
@@ -3991,13 +4185,13 @@ return pv";
                 keyParameters.Add($"{Keys(i + 2)}");
                 weights[i] = options.Weights?.ElementAt(i) ?? 1;
             }
-            StringBuilder optionScript = new StringBuilder();
-            string script = $@"local pv=redis.call('{RedisManager.GetSortedSetCombineCommand(options.CombineOperation)}',{Keys(1)},'{keyParameters.Count}',{string.Join(",", keyParameters)},'WEIGHTS',{string.Join(",", weights)},'AGGREGATE','{RedisManager.GetSortedSetAggregateName(options.Aggregate)}')
+            var optionScript = new StringBuilder();
+            var script = $@"local pv=redis.call('{RedisManager.GetSortedSetCombineCommand(options.CombineOperation)}',{Keys(1)},'{keyParameters.Count}',{string.Join(",", keyParameters)},'WEIGHTS',{string.Join(",", weights)},'AGGREGATE','{RedisManager.GetSortedSetAggregateName(options.Aggregate)}')
 {GetRefreshExpirationScript(1)}
 {GetRefreshExpirationScript(-2, 1, keyCount: keys.Length - 1)}
 return pv";
             var expire = RedisManager.GetExpiration(options.Expiration);
-            bool allowSliding = RedisManager.AllowSlidingExpiration();
+            var allowSliding = RedisManager.AllowSlidingExpiration();
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
@@ -4008,19 +4202,13 @@ return pv";
                 RedisManager.GetTotalSeconds(expire.Item2)
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetCombineAndStoreResponse> responses = new List<SortedSetCombineAndStoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetCombineAndStoreResponse()
-                {
-                    Success = true,
-                    NewSetLength = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4036,7 +4224,7 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sorted set add response</returns>
-        public async Task<IEnumerable<SortedSetAddResponse>> SortedSetAddAsync(CacheServer server, SortedSetAddOptions options)
+        public SortedSetAddResponse SortedSetAdd(CacheServer server, SortedSetAddOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -4046,11 +4234,20 @@ return pv";
             {
                 throw new ArgumentException($"{nameof(SortedSetAddOptions)}.{nameof(SortedSetAddOptions.Members)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortedSetAddStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortedSetAddResponse()
             {
-                return GetNoDatabaseResponse<SortedSetAddResponse>(server);
-            }
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortedSetAddStatement(SortedSetAddOptions options)
+        {
             var expire = RedisManager.GetExpiration(options.Expiration);
             var valueCount = options.Members.Count * 2;
             var values = new RedisValue[valueCount + 3];
@@ -4066,8 +4263,8 @@ return pv";
             }
             values[values.Length - 3] = options.Expiration == null;//refresh current time
             values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = expire.Item2?.TotalSeconds ?? 0;//expire time seconds
-            string script = $@"local obv=redis.call('ZADD',{Keys(1)},{string.Join(",", valueParameters)})
+            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            var script = $@"local obv=redis.call('ZADD',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(valueCount - 2)}
 return obv";
             var keys = new RedisKey[]
@@ -4075,19 +4272,13 @@ return obv";
                 options.Key.GetActualKey()
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortedSetAddResponse> responses = new List<SortedSetAddResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, values, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortedSetAddResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = values,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4111,18 +4302,27 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sort response</returns>
-        public async Task<IEnumerable<SortResponse>> SortAsync(CacheServer server, SortOptions options)
+        public SortResponse Sort(CacheServer server, SortOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(SortOptions)}.{nameof(SortOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortStatement(options);
+            var result = (RedisValue[])ExecuteStatement(server, database, statement);
+            return new SortResponse()
             {
-                return GetNoDatabaseResponse<SortResponse>(server);
-            }
-            string script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(options.By) ? string.Empty : $",'BY','{options.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(options.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", options.Gets.Select(c => $"'GET','{c}'"))}")},{(options.Order == CacheOrder.Descending ? "'DESC'" : "'ASC'")}{(options.SortType == CacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)})
+                Success = true,
+                Values = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortStatement(SortOptions options)
+        {
+            var script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(options.By) ? string.Empty : $",'BY','{options.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(options.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", options.Gets.Select(c => $"'GET','{c}'"))}")},{(options.Order == CacheOrder.Descending ? "'DESC'" : "'ASC'")}{(options.SortType == CacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)})
 {GetRefreshExpirationScript()}
 return obv";
             var keys = new RedisKey[]
@@ -4138,19 +4338,13 @@ return obv";
                 0,//expire time seconds
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortResponse> responses = new List<SortResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (RedisValue[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortResponse()
-                {
-                    Success = true,
-                    Values = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4170,7 +4364,7 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>sort and store response</returns>
-        public async Task<IEnumerable<SortAndStoreResponse>> SortAndStoreAsync(CacheServer server, SortAndStoreOptions options)
+        public SortAndStoreResponse SortAndStore(CacheServer server, SortAndStoreOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.SourceKey))
             {
@@ -4180,17 +4374,26 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortAndStoreOptions)}.{nameof(SortAndStoreOptions.DestinationKey)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetSortAndStoreStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new SortAndStoreResponse()
             {
-                return GetNoDatabaseResponse<SortAndStoreResponse>(server);
-            }
-            string script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(options.By) ? string.Empty : $",'BY','{options.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(options.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", options.Gets.Select(c => $"'GET','{c}'"))}")},{(options.Order == CacheOrder.Descending ? "'DESC'" : "'ASC'")}{(options.SortType == CacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)},'STORE',{Keys(2)})
+                Success = true,
+                Length = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetSortAndStoreStatement(SortAndStoreOptions options)
+        {
+            var script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(options.By) ? string.Empty : $",'BY','{options.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(options.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", options.Gets.Select(c => $"'GET','{c}'"))}")},{(options.Order == CacheOrder.Descending ? "'DESC'" : "'ASC'")}{(options.SortType == CacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)},'STORE',{Keys(2)})
 {GetRefreshExpirationScript()}
 {GetRefreshExpirationScript(3, 1)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
-            bool allowSliding = RedisManager.AllowSlidingExpiration();
+            var allowSliding = RedisManager.AllowSlidingExpiration();
             var keys = new RedisKey[]
             {
                 options.SourceKey.GetActualKey(),
@@ -4208,19 +4411,13 @@ return obv";
                 RedisManager.GetTotalSeconds(expire.Item2)//-deskey
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<SortAndStoreResponse> responses = new List<SortAndStoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new SortAndStoreResponse()
-                {
-                    Success = true,
-                    Length = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4238,18 +4435,27 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key type response</returns>
-        public async Task<IEnumerable<TypeResponse>> KeyTypeAsync(CacheServer server, TypeOptions options)
+        public TypeResponse KeyType(CacheServer server, TypeOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(TypeOptions)}.{nameof(TypeOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyTypeStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new TypeResponse()
             {
-                return GetNoDatabaseResponse<TypeResponse>(server);
-            }
-            string script = $@"local obv=redis.call('TYPE',{Keys(1)})
+                Success = true,
+                KeyType = RedisManager.GetCacheKeyType(result),
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyTypeStatement(TypeOptions options)
+        {
+            var script = $@"local obv=redis.call('TYPE',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return obv";
             var keys = new RedisKey[]
@@ -4261,22 +4467,15 @@ return obv";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<TypeResponse> responses = new List<TypeResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new TypeResponse()
-                {
-                    Success = true,
-                    KeyType = RedisManager.GetCacheKeyType(result),
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4291,18 +4490,29 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key time to live response</returns>
-        public async Task<IEnumerable<TimeToLiveResponse>> KeyTimeToLiveAsync(CacheServer server, TimeToLiveOptions options)
+        public TimeToLiveResponse KeyTimeToLive(CacheServer server, TimeToLiveOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(TimeToLiveOptions)}.{nameof(TimeToLiveOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyTimeToLiveStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new TimeToLiveResponse()
             {
-                return GetNoDatabaseResponse<TimeToLiveResponse>(server);
-            }
-            string script = $@"local obv=redis.call('TTL',{Keys(1)})
+                Success = true,
+                TimeToLiveSeconds = result,
+                KeyExist = result != -2,
+                Perpetual = result == -1,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyTimeToLiveStatement(TimeToLiveOptions options)
+        {
+            var script = $@"local obv=redis.call('TTL',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return obv";
             var keys = new RedisKey[]
@@ -4317,21 +4527,13 @@ return obv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<TimeToLiveResponse> responses = new List<TimeToLiveResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new TimeToLiveResponse()
-                {
-                    Success = true,
-                    TimeToLiveSeconds = result,
-                    KeyExist = result != -2,
-                    Perpetual = result == -1,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4346,18 +4548,26 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key restore response</returns>
-        public async Task<IEnumerable<RestoreResponse>> KeyRestoreAsync(CacheServer server, RestoreOptions options)
+        public RestoreResponse KeyRestore(CacheServer server, RestoreOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(RestoreOptions)}.{nameof(RestoreOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyRestoreStatement(options);
+            var result = (bool)ExecuteStatement(server, database, statement);
+            return new RestoreResponse()
             {
-                return GetNoDatabaseResponse<RestoreResponse>(server);
-            }
-            string script = $@"local obv= string.lower(tostring(redis.call('RESTORE',{Keys(1)},'0',{Arg(1)})))=='ok'
+                Success = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyRestoreStatement(RestoreOptions options)
+        {
+            var script = $@"local obv= string.lower(tostring(redis.call('RESTORE',{Keys(1)},'0',{Arg(1)})))=='ok'
 {GetRefreshExpirationScript(-1)}
 return obv";
             var expire = RedisManager.GetExpiration(options.Expiration);
@@ -4371,21 +4581,15 @@ return obv";
                 options.Expiration==null,//refresh current time
                 expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<RestoreResponse> responses = new List<RestoreResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (bool)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new RestoreResponse()
-                {
-                    Success = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4399,7 +4603,7 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key rename response</returns>
-        public async Task<IEnumerable<RenameResponse>> KeyRenameAsync(CacheServer server, RenameOptions options)
+        public RenameResponse KeyRename(CacheServer server, RenameOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -4409,14 +4613,22 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(RenameOptions)}.{nameof(RenameOptions.NewKey)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyRenameStatement(options);
+            var result = (bool)ExecuteStatement(server, database, statement);
+            return new RenameResponse()
             {
-                return GetNoDatabaseResponse<RenameResponse>(server);
-            }
-            string cacheKey = options.Key.GetActualKey();
-            string newCacheKey = options.NewKey.GetActualKey();
-            string script = $@"{GetRefreshExpirationScript(-2)}
+                Success = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyRenameStatement(RenameOptions options)
+        {
+            var cacheKey = options.Key.GetActualKey();
+            var newCacheKey = options.NewKey.GetActualKey();
+            var script = $@"{GetRefreshExpirationScript(-2)}
 local obv=string.lower(tostring(redis.call('{(options.WhenNewKeyNotExists ? "RENAMENX" : "RENAME")}',{Keys(1)},{Keys(2)})))
 if obv=='ok' or obv=='1'
 then
@@ -4437,18 +4649,13 @@ return false";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<RenameResponse> responses = new List<RenameResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (bool)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new RenameResponse()
-                {
-                    Success = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4461,14 +4668,23 @@ return false";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key random response</returns>
-        public async Task<IEnumerable<RandomResponse>> KeyRandomAsync(CacheServer server, RandomOptions options)
+        public RandomResponse KeyRandom(CacheServer server, RandomOptions options)
         {
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyRandomStatement(options);
+            var result = (string)ExecuteStatement(server, database, statement);
+            return new RandomResponse()
             {
-                return GetNoDatabaseResponse<RandomResponse>(server);
-            }
-            string script = $@"local obv=redis.call('RANDOMKEY')
+                Success = true,
+                Key = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyRandomStatement(RandomOptions options)
+        {
+            var script = $@"local obv=redis.call('RANDOMKEY')
 if obv
 then
     local exkey=obv..'{RedisManager.ExpirationKeySuffix}' 
@@ -4486,19 +4702,13 @@ return obv";
             var keys = new RedisKey[0];
             var parameters = new RedisValue[0];
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<RandomResponse> responses = new List<RandomResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (string)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new RandomResponse()
-                {
-                    Success = true,
-                    Key = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4512,39 +4722,42 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key persist response</returns>
-        public async Task<IEnumerable<PersistResponse>> KeyPersistAsync(CacheServer server, PersistOptions options)
+        public PersistResponse KeyPersist(CacheServer server, PersistOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(PersistOptions)}.{nameof(PersistOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyPersistStatement(options);
+            var result = (bool)ExecuteStatement(server, database, statement);
+            return new PersistResponse()
             {
-                return GetNoDatabaseResponse<PersistResponse>(server);
-            }
+                Success = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyPersistStatement(PersistOptions options)
+        {
             var cacheKey = options.Key.GetActualKey();
             var keys = new RedisKey[1] { cacheKey };
             var parameters = new RedisValue[0];
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<PersistResponse> responses = new List<PersistResponse>(databases.Count);
-            string script = $@"local obv=redis.call('PERSIST',{Keys(1)})==1
+            var script = $@"local obv=redis.call('PERSIST',{Keys(1)})==1
 if obv
 then
     redis.call('DEL','{GetExpirationKey(cacheKey)}')
 end
 return obv";
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (bool)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new PersistResponse()
-                {
-                    Success = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4560,7 +4773,7 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key move response</returns>
-        public async Task<IEnumerable<MoveResponse>> KeyMoveAsync(CacheServer server, MoveOptions options)
+        public MoveResponse KeyMove(CacheServer server, MoveOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
@@ -4570,11 +4783,19 @@ return obv";
             {
                 throw new ArgumentException($"{nameof(MoveOptions)}.{nameof(MoveOptions.DatabaseName)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyMoveStatement(options);
+            var result = (bool)ExecuteStatement(server, database, statement);
+            return new MoveResponse()
             {
-                return GetNoDatabaseResponse<MoveResponse>(server);
-            }
+                Success = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyMoveStatement(MoveOptions options)
+        {
             var cacheKey = options.Key.GetActualKey();
             var keys = new RedisKey[1] { cacheKey };
             var parameters = new RedisValue[1]
@@ -4582,7 +4803,7 @@ return obv";
                 options.DatabaseName
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            string script = $@"local obv=redis.call('MOVE',{Keys(1)},{Arg(1)})==1
+            var script = $@"local obv=redis.call('MOVE',{Keys(1)},{Arg(1)})==1
 local exkey='{GetExpirationKey(cacheKey)}' 
 local ct=redis.call('GET',exkey)
 if ct 
@@ -4600,18 +4821,13 @@ then
     end
 end
 return obv";
-            List<MoveResponse> responses = new List<MoveResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (bool)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new MoveResponse()
-                {
-                    Success = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4626,21 +4842,29 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key migrate response</returns>
-        public async Task<IEnumerable<MigrateResponse>> KeyMigrateAsync(CacheServer server, Keys.MigrateOptions options)
+        public MigrateKeyResponse KeyMigrate(CacheServer server, MigrateKeyOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
-                throw new ArgumentNullException($"{nameof(Cache.Keys.MigrateOptions)}.{nameof(Cache.Keys.MigrateOptions.Key)}");
+                throw new ArgumentNullException($"{nameof(MigrateKeyOptions)}.{nameof(MigrateKeyOptions.Key)}");
             }
             if (options.Destination == null)
             {
-                throw new ArgumentNullException($"{nameof(Cache.Keys.MigrateOptions)}.{nameof(Cache.Keys.MigrateOptions.Destination)}");
+                throw new ArgumentNullException($"{nameof(MigrateKeyOptions)}.{nameof(MigrateKeyOptions.Destination)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyMigrateStatement(options);
+            var result = (bool)ExecuteStatement(server, database, statement);
+            return new MigrateKeyResponse()
             {
-                return GetNoDatabaseResponse<MigrateResponse>(server);
-            }
+                Success = true,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyMigrateStatement(MigrateKeyOptions options)
+        {
             var cacheKey = options.Key.GetActualKey();
             var keys = new RedisKey[1] { cacheKey };
             var parameters = new RedisValue[1]
@@ -4648,8 +4872,7 @@ return obv";
                 options.CopyCurrent
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<MigrateResponse> responses = new List<MigrateResponse>(databases.Count);
-            string script = $@"local obv=string.lower(tostring(redis.call('MIGRATE','{options.Destination.Port}','{options.Destination.Host}',{Keys(1)},'{options.TimeOutMilliseconds}'{(options.CopyCurrent ? ",'COPY'" : string.Empty)}{(options.ReplaceDestination ? ",'REPLACE'" : string.Empty)})))
+            var script = $@"local obv=string.lower(tostring(redis.call('MIGRATE','{options.Destination.Port}','{options.Destination.Host}',{Keys(1)},'{options.TimeOutMilliseconds}'{(options.CopyCurrent ? ",'COPY'" : string.Empty)}{(options.ReplaceDestination ? ",'REPLACE'" : string.Empty)})))
 if {Arg(1)}=='1'
 then
     local exkey='{GetExpirationKey(cacheKey)}' 
@@ -4664,17 +4887,13 @@ then
     end
 end
 return obv";
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (bool)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new MigrateResponse()
-                {
-                    Success = true,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4689,41 +4908,44 @@ return obv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key expire response</returns>
-        public async Task<IEnumerable<ExpireResponse>> KeyExpireAsync(CacheServer server, ExpireOptions options)
+        public ExpireResponse KeyExpire(CacheServer server, ExpireOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(ExpireOptions)}.{nameof(ExpireOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyExpireStatement(options);
+            var result = (bool)ExecuteStatement(server, database, statement);
+            return new ExpireResponse()
             {
-                return GetNoDatabaseResponse<ExpireResponse>(server);
-            }
+                Success = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyExpireStatement(ExpireOptions options)
+        {
             var cacheKey = options.Key.GetActualKey();
             var expire = RedisManager.GetExpiration(options.Expiration);
-            var seconds = expire.Item2?.TotalSeconds ?? 0;
+            var seconds = RedisManager.GetTotalSeconds(expire.Item2);
             var keys = new RedisKey[0];
             var parameters = new RedisValue[0];
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ExpireResponse> responses = new List<ExpireResponse>(databases.Count);
-            string script = $@"local rs=redis.call('EXPIRE','{cacheKey}','{seconds}')==1
+            var script = $@"local rs=redis.call('EXPIRE','{cacheKey}','{seconds}')==1
 if rs and '{(expire.Item1 && RedisManager.AllowSlidingExpiration() ? "1" : "0")}'=='1'
 then
     redis.call('SET','{GetExpirationKey(cacheKey)}','{seconds}','EX','{seconds}')
 end
 return rs";
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (bool)await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ExpireResponse()
-                {
-                    Success = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion;
@@ -4738,17 +4960,26 @@ return rs";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key dump response</returns>
-        public async Task<IEnumerable<DumpResponse>> KeyDumpAsync(CacheServer server, DumpOptions options)
+        public DumpResponse KeyDump(CacheServer server, DumpOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(DumpOptions)}.{nameof(DumpOptions.Key)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyDumpStatement(options);
+            var result = (byte[])ExecuteStatement(server, database, statement);
+            return new DumpResponse()
             {
-                return GetNoDatabaseResponse<DumpResponse>(server);
-            }
+                Success = true,
+                ByteValues = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyDumpStatement(DumpOptions options)
+        {
             var keys = new RedisKey[]
             {
                 options.Key.GetActualKey()
@@ -4758,25 +4989,18 @@ return rs";
                 true,//refresh current time
                 RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
-
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<DumpResponse> responses = new List<DumpResponse>(databases.Count);
-            string script = $@"local pv=redis.call('DUMP',{Keys(1)})
+            var script = $@"local pv=redis.call('DUMP',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (byte[])await db.RemoteDatabase.ScriptEvaluateAsync(script, keys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new DumpResponse()
-                {
-                    Success = true,
-                    ByteValues = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Keys = keys,
+                Parameters = parameters,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4789,32 +5013,33 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>key delete response</returns>
-        public async Task<IEnumerable<DeleteResponse>> KeyDeleteAsync(CacheServer server, DeleteOptions options)
+        public DeleteResponse KeyDelete(CacheServer server, DeleteOptions options)
         {
             if (options?.Keys.IsNullOrEmpty() ?? true)
             {
                 throw new ArgumentNullException($"{nameof(DeleteOptions)}.{nameof(DeleteOptions.Keys)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyDeleteStatement(options);
+            var count = database.RemoteDatabase.KeyDelete(statement.Keys, statement.Flags);
+            return new DeleteResponse()
             {
-                return GetNoDatabaseResponse<DeleteResponse>(server);
-            }
+                Success = true,
+                DeleteCount = count,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyDeleteStatement(DeleteOptions options)
+        {
             var keys = options.Keys.Select(c => { RedisKey key = c.GetActualKey(); return key; }).ToArray();
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<DeleteResponse> responses = new List<DeleteResponse>(databases.Count);
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var count = await db.RemoteDatabase.KeyDeleteAsync(keys, cmdFlags).ConfigureAwait(false);
-                responses.Add(new DeleteResponse()
-                {
-                    Success = true,
-                    DeleteCount = count,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Keys = keys,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4827,17 +5052,26 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns></returns>
-        public async Task<IEnumerable<ExistResponse>> KeyExistAsync(CacheServer server, ExistOptions options)
+        public ExistResponse KeyExist(CacheServer server, ExistOptions options)
         {
             if (options.Keys.IsNullOrEmpty())
             {
                 throw new ArgumentNullException($"{nameof(ExistOptions)}.{nameof(ExistOptions.Keys)}");
             }
-            var databases = RedisManager.GetDatabases(server);
-            if (databases.IsNullOrEmpty())
+            var database = RedisManager.GetDatabase(server);
+            var statement = GetKeyExistStatement(options);
+            var result = (long)ExecuteStatement(server, database, statement);
+            return new ExistResponse()
             {
-                return GetNoDatabaseResponse<ExistResponse>(server);
-            }
+                Success = true,
+                KeyCount = result,
+                CacheServer = server,
+                Database = database
+            };
+        }
+
+        RedisStatement GetKeyExistStatement(ExistOptions options)
+        {
             var redisKeys = new RedisKey[options.Keys.Count];
             var redisKeyParameters = new List<string>(options.Keys.Count);
             for (var i = 0; i < options.Keys.Count; i++)
@@ -4853,22 +5087,16 @@ return pv";
 
             };
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            List<ExistResponse> responses = new List<ExistResponse>(databases.Count);
-            string script = $@"local pv=redis.call('EXISTS',{string.Join(",", redisKeyParameters)})
+            var script = $@"local pv=redis.call('EXISTS',{string.Join(",", redisKeyParameters)})
 {GetRefreshExpirationScript(-2)}
 return pv";
-            foreach (var db in databases)
+            return new RedisStatement()
             {
-                var result = (long)await db.RemoteDatabase.ScriptEvaluateAsync(script, redisKeys, parameters, cmdFlags).ConfigureAwait(false);
-                responses.Add(new ExistResponse()
-                {
-                    Success = true,
-                    KeyCount = result,
-                    CacheServer = server,
-                    Database = db
-                });
-            }
-            return responses;
+                Script = script,
+                Parameters = parameters,
+                Keys = redisKeys,
+                Flags = cmdFlags
+            };
         }
 
         #endregion
@@ -4885,29 +5113,30 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>Return get all database response</returns>
-        public async Task<IEnumerable<GetAllDataBaseResponse>> GetAllDataBaseAsync(CacheServer server, GetAllDataBaseOptions options)
+        public GetAllDataBaseResponse GetAllDataBase(CacheServer server, GetAllDataBaseOptions options)
         {
             if (server == null)
             {
                 throw new ArgumentNullException($"{nameof(server)}");
             }
-            if (options?.EndPoints.IsNullOrEmpty() ?? true)
+            if (options?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetAllDataBaseOptions)}.{nameof(GetAllDataBaseOptions.EndPoints)}");
+                throw new ArgumentNullException($"{nameof(GetAllDataBaseOptions)}.{nameof(GetAllDataBaseOptions.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, options.EndPoints))
+            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { options.EndPoint }))
             {
-                List<GetAllDataBaseResponse> responses = new List<GetAllDataBaseResponse>(options.EndPoints.Count);
-                foreach (var ep in options.EndPoints)
+                var response = new GetAllDataBaseResponse()
                 {
-                    var configs = await conn.GetServer(string.Format("{0}:{1}", ep.Host, ep.Port)).ConfigGetAsync("databases").ConfigureAwait(false);
-                    if (configs.IsNullOrEmpty())
-                    {
-                        continue;
-                    }
+                    Success = true,
+                    CacheServer = server,
+                    EndPoint = options.EndPoint
+                };
+                var configs = conn.GetServer(string.Format("{0}:{1}", options.EndPoint.Host, options.EndPoint.Port)).ConfigGet("databases");
+                if (!configs.IsNullOrEmpty())
+                {
                     var databaseConfig = configs.FirstOrDefault(c => string.Equals(c.Key, "databases", StringComparison.OrdinalIgnoreCase));
-                    int dataBaseSize = databaseConfig.Value.ObjectToInt32();
-                    List<CacheDatabase> databaseList = new List<CacheDatabase>(dataBaseSize);
+                    var dataBaseSize = databaseConfig.Value.ToInt32();
+                    var databaseList = new List<CacheDatabase>(dataBaseSize);
                     for (var d = 0; d < dataBaseSize; d++)
                     {
                         databaseList.Add(new CacheDatabase()
@@ -4916,15 +5145,8 @@ return pv";
                             Name = $"{d}"
                         });
                     };
-                    responses.Add(new GetAllDataBaseResponse()
-                    {
-                        Success = true,
-                        Databases = databaseList,
-                        CacheServer = server,
-                        EndPoint = ep
-                    });
                 }
-                return responses;
+                return response;
             }
         }
 
@@ -4938,19 +5160,23 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>Return get keys response</returns>
-        public async Task<IEnumerable<GetKeysResponse>> GetKeysAsync(CacheServer server, GetKeysOptions options)
+        public GetKeysResponse GetKeys(CacheServer server, GetKeysOptions options)
         {
             if (server == null)
             {
                 throw new ArgumentNullException($"{nameof(server)}");
             }
-            if (options?.EndPoints.IsNullOrEmpty() ?? true)
+            if (options?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetKeysOptions)}.{nameof(GetKeysOptions.EndPoints)}");
+                throw new ArgumentNullException($"{nameof(GetAllDataBaseOptions)}.{nameof(GetAllDataBaseOptions.EndPoint)}");
+            }
+            if (!int.TryParse(server.Database, out int dbIndex))
+            {
+                throw new SixnetException($"Redis database {server.Database} is invalid");
             }
 
             var query = options.Query;
-            string searchString = "*";
+            var searchString = "*";
             if (query != null && !string.IsNullOrWhiteSpace(query.MateKey))
             {
                 switch (query.Type)
@@ -4966,37 +5192,25 @@ return pv";
                         break;
                 }
             }
-            using (var conn = RedisManager.GetConnection(server, options.EndPoints))
+            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { options.EndPoint }))
             {
-                List<GetKeysResponse> responses = new List<GetKeysResponse>(options.EndPoints.Count);
-                foreach (var ep in options.EndPoints)
+                var redisServer = conn.GetServer(string.Format("{0}:{1}", options.EndPoint.Host, options.EndPoint.Port));
+                var keys = redisServer.Keys(dbIndex, searchString, query.PageSize, 0, (query.Page - 1) * query.PageSize, CommandFlags.None);
+                var itemList = keys.Select(c => { CacheKey key = ConstantCacheKey.Create(c); return key; }).ToList();
+                var totalCount = redisServer.DatabaseSize(dbIndex);
+                var keyItemPaging = new CachePaging<CacheKey>(query.Page, query.PageSize, totalCount, itemList);
+                return new GetKeysResponse()
                 {
-                    var redisServer = conn.GetServer(string.Format("{0}:{1}", ep.Host, ep.Port));
-                    foreach (var db in server.Databases)
+                    Success = true,
+                    Keys = keyItemPaging,
+                    CacheServer = server,
+                    EndPoint = options.EndPoint,
+                    Database = new RedisDatabase()
                     {
-                        if (!int.TryParse(db, out int dbIndex))
-                        {
-                            continue;
-                        }
-                        var keys = redisServer.Keys(dbIndex, searchString, query.PageSize, 0, (query.Page - 1) * query.PageSize, CommandFlags.None);
-                        List<CacheKey> itemList = keys.Select(c => { CacheKey key = ConstantCacheKey.Create(c); return key; }).ToList();
-                        var totalCount = await redisServer.DatabaseSizeAsync(dbIndex).ConfigureAwait(false);
-                        var keyItemPaging = new CachePaging<CacheKey>(query.Page, query.PageSize, totalCount, itemList);
-                        responses.Add(new GetKeysResponse()
-                        {
-                            Success = true,
-                            Keys = keyItemPaging,
-                            CacheServer = server,
-                            EndPoint = ep,
-                            Database = new RedisDatabase()
-                            {
-                                Index = dbIndex,
-                                Name = dbIndex.ToString()
-                            }
-                        });
+                        Index = dbIndex,
+                        Name = dbIndex.ToString()
                     }
-                }
-                return responses;
+                };
             }
         }
 
@@ -5010,44 +5224,32 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>clear data response</returns>
-        public async Task<IEnumerable<ClearDataResponse>> ClearDataAsync(CacheServer server, ClearDataOptions options)
+        public ClearDataResponse ClearData(CacheServer server, ClearDataOptions options)
         {
-            if (options.EndPoints.IsNullOrEmpty())
+            if (options.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(ClearDataOptions)}.{nameof(ClearDataOptions.EndPoints)}");
+                throw new ArgumentNullException($"{nameof(ClearDataOptions)}.{nameof(ClearDataOptions.EndPoint)}");
             }
-            if (server.Databases.IsNullOrEmpty())
+            if (!int.TryParse(server.Database, out int dbIndex))
             {
-                throw new ArgumentNullException($"{nameof(CacheServer)}.{nameof(CacheServer.Databases)}");
+                throw new SixnetException($"Redis database {server.Database} is invalid");
             }
             var cmdFlags = RedisManager.GetCommandFlags(options.CommandFlags);
-            using (var conn = RedisManager.GetConnection(server, options.EndPoints))
+            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { options.EndPoint }))
             {
-                List<ClearDataResponse> responses = new List<ClearDataResponse>();
-                foreach (var ep in options.EndPoints)
+                var redisServer = conn.GetServer(string.Format("{0}:{1}", options.EndPoint.Host, options.EndPoint.Port));
+                redisServer.FlushDatabase(dbIndex, cmdFlags);
+                return new ClearDataResponse()
                 {
-                    var redisServer = conn.GetServer(string.Format("{0}:{1}", ep.Host, ep.Port));
-                    foreach (var db in server.Databases)
+                    Success = true,
+                    CacheServer = server,
+                    EndPoint = options.EndPoint,
+                    Database = new RedisDatabase()
                     {
-                        if (!int.TryParse(db, out int dbIndex))
-                        {
-                            continue;
-                        }
-                        await redisServer.FlushDatabaseAsync(dbIndex, cmdFlags).ConfigureAwait(false);
-                        responses.Add(new ClearDataResponse()
-                        {
-                            Success = true,
-                            CacheServer = server,
-                            EndPoint = ep,
-                            Database = new RedisDatabase()
-                            {
-                                Index = dbIndex,
-                                Name = dbIndex.ToString()
-                            }
-                        });
+                        Index = dbIndex,
+                        Name = dbIndex.ToString()
                     }
-                }
-                return responses;
+                };
             }
         }
 
@@ -5061,83 +5263,74 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>get key detail response</returns>
-        public async Task<IEnumerable<GetDetailResponse>> GetKeyDetailAsync(CacheServer server, GetDetailOptions options)
+        public GetDetailResponse GetKeyDetail(CacheServer server, GetDetailOptions options)
         {
             if (string.IsNullOrWhiteSpace(options?.Key))
             {
                 throw new ArgumentNullException($"{nameof(GetDetailOptions)}.{nameof(GetDetailOptions.Key)}");
             }
-            if (options.EndPoints.IsNullOrEmpty())
+            if (options.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetDetailOptions)}.{nameof(GetDetailOptions.EndPoints)}");
+                throw new ArgumentNullException($"{nameof(GetDetailOptions)}.{nameof(GetDetailOptions.EndPoint)}");
             }
-            if (server.Databases.IsNullOrEmpty())
+            if (!int.TryParse(server.Database, out int dbIndex))
             {
-                throw new ArgumentNullException($"{nameof(CacheServer)}.{nameof(CacheServer.Databases)}");
+                throw new SixnetException($"Redis database {server.Database} is invalid");
             }
-            using (var conn = RedisManager.GetConnection(server, options.EndPoints))
+            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { options.EndPoint }))
             {
-                List<GetDetailResponse> responses = new List<GetDetailResponse>();
-                foreach (var db in server.Databases)
+                var redisDatabase = conn.GetDatabase(dbIndex);
+                var redisKeyType = redisDatabase.KeyType(options.Key.GetActualKey());
+                var cacheKeyType = RedisManager.GetCacheKeyType(redisKeyType.ToString());
+                var keyItem = new CacheEntry()
                 {
-                    if (!int.TryParse(db, out var dbIndex))
-                    {
-                        continue;
-                    }
-                    var redisDatabase = conn.GetDatabase(dbIndex);
-                    var redisKeyType = redisDatabase.KeyTypeAsync(options.Key.GetActualKey()).ConfigureAwait(false);
-                    var cacheKeyType = RedisManager.GetCacheKeyType(redisKeyType.ToString());
-                    CacheEntry keyItem = new CacheEntry()
-                    {
-                        Key = options.Key.GetActualKey(),
-                        Type = cacheKeyType
-                    };
-                    switch (cacheKeyType)
-                    {
-                        case CacheKeyType.String:
-                            keyItem.Value = await redisDatabase.StringGetAsync(keyItem.Key.GetActualKey()).ConfigureAwait(false);
-                            break;
-                        case CacheKeyType.List:
-                            List<string> listValues = new List<string>();
-                            var listResults = await redisDatabase.ListRangeAsync(keyItem.Key.GetActualKey(), 0, -1, CommandFlags.None).ConfigureAwait(false);
-                            listValues.AddRange(listResults.Select(c => (string)c));
-                            keyItem.Value = listValues;
-                            break;
-                        case CacheKeyType.Set:
-                            List<string> setValues = new List<string>();
-                            var setResults = await redisDatabase.SetMembersAsync(keyItem.Key.GetActualKey(), CommandFlags.None).ConfigureAwait(false);
-                            setValues.AddRange(setResults.Select(c => (string)c));
-                            keyItem.Value = setValues;
-                            break;
-                        case CacheKeyType.SortedSet:
-                            List<string> sortSetValues = new List<string>();
-                            var sortedResults = await redisDatabase.SortedSetRangeByRankAsync(keyItem.Key.GetActualKey()).ConfigureAwait(false);
-                            sortSetValues.AddRange(sortedResults.Select(c => (string)c));
-                            keyItem.Value = sortSetValues;
-                            break;
-                        case CacheKeyType.Hash:
-                            Dictionary<string, string> hashValues = new Dictionary<string, string>();
-                            var objValues = await redisDatabase.HashGetAllAsync(keyItem.Key.GetActualKey()).ConfigureAwait(false);
-                            foreach (var obj in objValues)
-                            {
-                                hashValues.Add(obj.Name, obj.Value);
-                            }
-                            keyItem.Value = hashValues;
-                            break;
-                    }
-                    responses.Add(new GetDetailResponse()
-                    {
-                        Success = true,
-                        CacheEntry = keyItem,
-                        CacheServer = server,
-                        Database = new CacheDatabase()
+                    Key = options.Key.GetActualKey(),
+                    Type = cacheKeyType
+                };
+                switch (cacheKeyType)
+                {
+                    case CacheKeyType.String:
+                        keyItem.Value = redisDatabase.StringGetAsync(keyItem.Key.GetActualKey());
+                        break;
+                    case CacheKeyType.List:
+                        var listValues = new List<string>();
+                        var listResults = redisDatabase.ListRange(keyItem.Key.GetActualKey(), 0, -1, CommandFlags.None);
+                        listValues.AddRange(listResults.Select(c => (string)c));
+                        keyItem.Value = listValues;
+                        break;
+                    case CacheKeyType.Set:
+                        var setValues = new List<string>();
+                        var setResults = redisDatabase.SetMembers(keyItem.Key.GetActualKey(), CommandFlags.None);
+                        setValues.AddRange(setResults.Select(c => (string)c));
+                        keyItem.Value = setValues;
+                        break;
+                    case CacheKeyType.SortedSet:
+                        var sortSetValues = new List<string>();
+                        var sortedResults = redisDatabase.SortedSetRangeByRank(keyItem.Key.GetActualKey());
+                        sortSetValues.AddRange(sortedResults.Select(c => (string)c));
+                        keyItem.Value = sortSetValues;
+                        break;
+                    case CacheKeyType.Hash:
+                        var hashValues = new Dictionary<string, string>();
+                        var objValues = redisDatabase.HashGetAll(keyItem.Key.GetActualKey());
+                        foreach (var obj in objValues)
                         {
-                            Index = dbIndex,
-                            Name = dbIndex.ToString()
+                            hashValues.Add(obj.Name, obj.Value);
                         }
-                    });
+                        keyItem.Value = hashValues;
+                        break;
                 }
-                return responses;
+                return new GetDetailResponse()
+                {
+                    Success = true,
+                    CacheEntry = keyItem,
+                    CacheServer = server,
+                    Database = new CacheDatabase()
+                    {
+                        Index = dbIndex,
+                        Name = dbIndex.ToString()
+                    }
+                };
             }
         }
 
@@ -5151,30 +5344,24 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>get server config response</returns>
-        public async Task<IEnumerable<GetServerConfigurationResponse>> GetServerConfigurationAsync(CacheServer server, GetServerConfigurationOptions options)
+        public GetServerConfigurationResponse GetServerConfiguration(CacheServer server, GetServerConfigurationOptions options)
         {
-            if (options.EndPoints.IsNullOrEmpty())
+            if (options?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetServerConfigurationOptions)}.{nameof(GetServerConfigurationOptions.EndPoints)}");
+                throw new ArgumentNullException($"{nameof(GetServerConfigurationOptions)}.{nameof(GetServerConfigurationOptions.EndPoint)}");
             }
-            List<GetServerConfigurationResponse> responses = new List<GetServerConfigurationResponse>();
-            using (var conn = RedisManager.GetConnection(server, options.EndPoints))
+            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { options.EndPoint }))
             {
-                foreach (var ep in options.EndPoints)
+                var config = new RedisServerConfiguration();
+                var redisServer = conn.GetServer(string.Format("{0}:{1}", options.EndPoint.Host, options.EndPoint.Port));
+                var configs = redisServer.ConfigGet("*");
+                if (!configs.IsNullOrEmpty())
                 {
-                    var redisServer = conn.GetServer(string.Format("{0}:{1}", ep.Host, ep.Port));
-                    var configs = await redisServer.ConfigGetAsync("*").ConfigureAwait(false);
-                    if (configs.IsNullOrEmpty())
-                    {
-                        continue;
-                    }
-                    RedisServerConfiguration config = new RedisServerConfiguration();
-
                     #region Configuration info
 
                     foreach (var cfg in configs)
                     {
-                        string key = cfg.Key.ToLower();
+                        var key = cfg.Key.ToLower();
                         switch (key)
                         {
                             case "daemonize":
@@ -5184,7 +5371,7 @@ return pv";
                                 config.PidFile = cfg.Value;
                                 break;
                             case "port":
-                                int port = 0;
+                                var port = 0;
                                 if (!int.TryParse(cfg.Value, out port))
                                 {
                                     port = 6379;
@@ -5200,7 +5387,7 @@ return pv";
                                 config.TimeOut = timeOut;
                                 break;
                             case "loglevel":
-                                LogLevel logLevel = LogLevel.Verbose;
+                                var logLevel = LogLevel.Verbose;
                                 switch (cfg.Value)
                                 {
                                     case "debug":
@@ -5232,7 +5419,7 @@ return pv";
                                     continue;
                                 }
                                 var valueArray = cfg.Value.LSplit(" ");
-                                List<DataChangeSaveOptions> saveInfos = new List<DataChangeSaveOptions>();
+                                var saveInfos = new List<DataChangeSaveOptions>();
                                 for (var i = 0; i < valueArray.Length; i += 2)
                                 {
                                     if (valueArray.Length <= i + 1)
@@ -5265,7 +5452,7 @@ return pv";
                                 {
                                     continue;
                                 }
-                                string[] masterArray = cfg.Value.LSplit(" ");
+                                var masterArray = cfg.Value.LSplit(" ");
                                 config.MasterHost = masterArray[0];
                                 if (masterArray.Length > 1)
                                 {
@@ -5301,7 +5488,7 @@ return pv";
                                 config.AppendFileName = cfg.Value;
                                 break;
                             case "appendfsync":
-                                AppendfSync appendSync = AppendfSync.EverySecond;
+                                var appendSync = AppendfSync.EverySecond;
                                 switch (cfg.Value)
                                 {
                                     case "no":
@@ -5352,16 +5539,14 @@ return pv";
                     }
 
                     #endregion
-
-                    responses.Add(new GetServerConfigurationResponse()
-                    {
-                        ServerConfiguration = config,
-                        Success = true,
-                        CacheServer = server,
-                        EndPoint = ep
-                    });
                 }
-                return responses;
+                return new GetServerConfigurationResponse()
+                {
+                    ServerConfiguration = config,
+                    Success = true,
+                    CacheServer = server,
+                    EndPoint = options.EndPoint
+                };
             }
         }
 
@@ -5375,114 +5560,109 @@ return pv";
         /// <param name="server">Server</param>
         /// <param name="options">Options</param>
         /// <returns>save server config response</returns>
-        public async Task<IEnumerable<SaveServerConfigurationResponse>> SaveServerConfigurationAsync(CacheServer server, SaveServerConfigurationOptions options)
+        public SaveServerConfigurationResponse SaveServerConfiguration(CacheServer server, SaveServerConfigurationOptions options)
         {
-            if (!(options.ServerConfiguration is RedisServerConfiguration config))
+            if (!(options?.ServerConfiguration is RedisServerConfiguration config))
             {
-                return Array.Empty<SaveServerConfigurationResponse>();
+                throw new SixnetException($"{nameof(SaveServerConfigurationOptions.ServerConfiguration)} is not {nameof(RedisServerConfiguration)}");
             }
-            if (options.EndPoints.IsNullOrEmpty())
+            if (options?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(SaveServerConfigurationOptions)}.{nameof(SaveServerConfigurationOptions.EndPoints)}");
+                throw new ArgumentNullException($"{nameof(SaveServerConfigurationOptions)}.{nameof(SaveServerConfigurationOptions.EndPoint)}");
             }
-            List<SaveServerConfigurationResponse> responses = new List<SaveServerConfigurationResponse>(options.EndPoints.Count);
-            using (var conn = RedisManager.GetConnection(server, options.EndPoints))
+            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { options.EndPoint }))
             {
-                foreach (var ep in options.EndPoints)
+                var redisServer = conn.GetServer(string.Format("{0}:{1}", options.EndPoint.Host, options.EndPoint.Port));
+                if (!string.IsNullOrWhiteSpace(config.Host))
                 {
-                    var redisServer = conn.GetServer(string.Format("{0}:{1}", ep.Host, ep.Port));
-                    if (!string.IsNullOrWhiteSpace(config.Host))
-                    {
-                        redisServer.ConfigSet("bind", config.Host);
-                    }
-                    if (config.TimeOut >= 0)
-                    {
-                        redisServer.ConfigSet("timeout", config.TimeOut);
-                    }
-                    redisServer.ConfigSet("loglevel", config.LogLevel.ToString().ToLower());
-                    string saveConfigValue = string.Empty;
-                    if (!config.SaveConfiguration.IsNullOrEmpty())
-                    {
-                        List<string> configList = new List<string>();
-                        foreach (var saveCfg in config.SaveConfiguration)
-                        {
-                            configList.Add(saveCfg.Seconds.ToString());
-                            configList.Add(saveCfg.Changes.ToString());
-                        }
-                        saveConfigValue = string.Join(" ", configList);
-                    }
-                    redisServer.ConfigSet("save", saveConfigValue);
-                    redisServer.ConfigSet("rdbcompression", config.RdbCompression ? "yes" : "no");
-                    if (!config.DatabaseFileName.IsNullOrEmpty())
-                    {
-                        redisServer.ConfigSet("dbfilename", config.DatabaseFileName);
-                    }
-                    if (!string.IsNullOrWhiteSpace(config.DatabaseDirectory))
-                    {
-                        redisServer.ConfigSet("dir", config.DatabaseDirectory);
-                    }
-                    if (!string.IsNullOrWhiteSpace(config.MasterHost))
-                    {
-                        string masterUrl = string.Format("{0} {1}", config.Host, config.Port > 0 ? config.Port : 6379);
-                        redisServer.ConfigSet("slaveof", masterUrl);
-                    }
-                    if (config.MasterPassword != null)
-                    {
-                        redisServer.ConfigSet("masterauth", config.MasterPassword);
-                    }
-                    if (config.Password != null)
-                    {
-                        redisServer.ConfigSet("requirepass", config.Password);
-                    }
-                    if (config.MaxClient >= 0)
-                    {
-                        redisServer.ConfigSet("maxclients", config.MaxClient);
-                    }
-                    if (config.MaxMemory >= 0)
-                    {
-                        redisServer.ConfigSet("maxmemory", config.MaxMemory);
-                    }
-                    redisServer.ConfigSet("appendonly", config.AppendOnly ? "yes" : "no");
-                    if (!string.IsNullOrWhiteSpace(config.AppendFileName))
-                    {
-                        redisServer.ConfigSet("appendfilename", config.AppendFileName);
-                    }
-                    string appendfSyncVal = "everysec";
-                    switch (config.AppendfSync)
-                    {
-                        case AppendfSync.Always:
-                            appendfSyncVal = "always";
-                            break;
-                        case AppendfSync.EverySecond:
-                            appendfSyncVal = "everysec";
-                            break;
-                        case AppendfSync.No:
-                            appendfSyncVal = "no";
-                            break;
-                    }
-                    redisServer.ConfigSet("appendfsync", appendfSyncVal);
-                    if (!string.IsNullOrWhiteSpace(config.VirtualMemorySwapFile))
-                    {
-                        redisServer.ConfigSet("vm-swap-file", config.VirtualMemorySwapFile);
-                    }
-                    if (config.VirtualMemoryMaxThreads > 0)
-                    {
-                        redisServer.ConfigSet("vm-max-threads", config.VirtualMemoryMaxThreads);
-                    }
-                    redisServer.ConfigSet("activerehashing", config.ActivereHashing ? "yes" : "no");
-                    if (!string.IsNullOrWhiteSpace(config.IncludeConfigurationFile))
-                    {
-                        redisServer.ConfigSet("include", config.IncludeConfigurationFile);
-                    }
-                    await redisServer.ConfigRewriteAsync().ConfigureAwait(false);
-                    responses.Add(new SaveServerConfigurationResponse()
-                    {
-                        Success = true,
-                        CacheServer = server,
-                        EndPoint = ep
-                    });
+                    redisServer.ConfigSet("bind", config.Host);
                 }
-                return responses;
+                if (config.TimeOut >= 0)
+                {
+                    redisServer.ConfigSet("timeout", config.TimeOut);
+                }
+                redisServer.ConfigSet("loglevel", config.LogLevel.ToString().ToLower());
+                var saveConfigValue = string.Empty;
+                if (!config.SaveConfiguration.IsNullOrEmpty())
+                {
+                    var configList = new List<string>();
+                    foreach (var saveCfg in config.SaveConfiguration)
+                    {
+                        configList.Add(saveCfg.Seconds.ToString());
+                        configList.Add(saveCfg.Changes.ToString());
+                    }
+                    saveConfigValue = string.Join(" ", configList);
+                }
+                redisServer.ConfigSet("save", saveConfigValue);
+                redisServer.ConfigSet("rdbcompression", config.RdbCompression ? "yes" : "no");
+                if (!config.DatabaseFileName.IsNullOrEmpty())
+                {
+                    redisServer.ConfigSet("dbfilename", config.DatabaseFileName);
+                }
+                if (!string.IsNullOrWhiteSpace(config.DatabaseDirectory))
+                {
+                    redisServer.ConfigSet("dir", config.DatabaseDirectory);
+                }
+                if (!string.IsNullOrWhiteSpace(config.MasterHost))
+                {
+                    var masterUrl = string.Format("{0} {1}", config.Host, config.Port > 0 ? config.Port : 6379);
+                    redisServer.ConfigSet("slaveof", masterUrl);
+                }
+                if (config.MasterPassword != null)
+                {
+                    redisServer.ConfigSet("masterauth", config.MasterPassword);
+                }
+                if (config.Password != null)
+                {
+                    redisServer.ConfigSet("requirepass", config.Password);
+                }
+                if (config.MaxClient >= 0)
+                {
+                    redisServer.ConfigSet("maxclients", config.MaxClient);
+                }
+                if (config.MaxMemory >= 0)
+                {
+                    redisServer.ConfigSet("maxmemory", config.MaxMemory);
+                }
+                redisServer.ConfigSet("appendonly", config.AppendOnly ? "yes" : "no");
+                if (!string.IsNullOrWhiteSpace(config.AppendFileName))
+                {
+                    redisServer.ConfigSet("appendfilename", config.AppendFileName);
+                }
+                var appendfSyncVal = "everysec";
+                switch (config.AppendfSync)
+                {
+                    case AppendfSync.Always:
+                        appendfSyncVal = "always";
+                        break;
+                    case AppendfSync.EverySecond:
+                        appendfSyncVal = "everysec";
+                        break;
+                    case AppendfSync.No:
+                        appendfSyncVal = "no";
+                        break;
+                }
+                redisServer.ConfigSet("appendfsync", appendfSyncVal);
+                if (!string.IsNullOrWhiteSpace(config.VirtualMemorySwapFile))
+                {
+                    redisServer.ConfigSet("vm-swap-file", config.VirtualMemorySwapFile);
+                }
+                if (config.VirtualMemoryMaxThreads > 0)
+                {
+                    redisServer.ConfigSet("vm-max-threads", config.VirtualMemoryMaxThreads);
+                }
+                redisServer.ConfigSet("activerehashing", config.ActivereHashing ? "yes" : "no");
+                if (!string.IsNullOrWhiteSpace(config.IncludeConfigurationFile))
+                {
+                    redisServer.ConfigSet("include", config.IncludeConfigurationFile);
+                }
+                redisServer.ConfigRewrite();
+                return new SaveServerConfigurationResponse()
+                {
+                    Success = true,
+                    CacheServer = server,
+                    EndPoint = options.EndPoint
+                };
             }
         }
 
@@ -5516,7 +5696,7 @@ return pv";
         /// Get refresh expiration script
         /// </summary>
         /// <param name="keyCount">Refresh key index</param>
-        /// <param name="exKeyIndex">Expire key index</param>
+        /// <param name="keyOffset">Expire key index</param>
         /// <param name="refreshCurrentTimeArgIndex">Whether refresh current time arg index</param>
         /// <param name="hasNewExArgIndex">Whether has new expiration time arg index</param>
         /// <param name="newTimeArgIndex">New expiration time argindex</param>
@@ -5620,23 +5800,28 @@ end";
             }
         }
 
-        static IEnumerable<T> GetNoDatabaseResponse<T>(CacheServer server) where T : CacheResponse, new()
+        static T GetNoDatabaseResponse<T>(CacheServer server) where T : CacheResponse, new()
         {
-            if (CacheManager.Configuration.ThrowNoDatabaseException)
+            if (SixnetCacher.ThrowOnMissingDatabase)
             {
-                throw new EZNEWException("No cache database specified");
+                throw new SixnetException("No cache database specified");
             }
-            return new T[1] { CacheResponse.NoDatabase<T>(server) };
+            return CacheResponse.NoDatabase<T>(server);
         }
 
-        static IEnumerable<T> GetNoValueResponse<T>(CacheServer server) where T : CacheResponse, new()
+        static T GetNoValueResponse<T>(CacheServer server) where T : CacheResponse, new()
         {
-            return new T[1] { CacheResponse.FailResponse<T>("", "No value specified", server) };
+            return CacheResponse.FailResponse<T>("", "No value specified", server);
         }
 
-        static IEnumerable<T> GetNoKeyResponse<T>(CacheServer server) where T : CacheResponse, new()
+        static T GetNoKeyResponse<T>(CacheServer server) where T : CacheResponse, new()
         {
-            return new T[1] { CacheResponse.FailResponse<T>("", "No key specified", server) };
+            return CacheResponse.FailResponse<T>("", "No key specified", server);
+        }
+
+        RedisResult ExecuteStatement(CacheServer server, RedisDatabase database, RedisStatement statement)
+        {
+            return ExecuteStatement(server, database, statement);
         }
 
         #endregion

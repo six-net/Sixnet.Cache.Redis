@@ -4,9 +4,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Net;
-using EZNEW.Logging;
+using Sixnet.Logging;
+using Sixnet.Exceptions;
 
-namespace EZNEW.Cache.Redis
+namespace Sixnet.Cache.Redis
 {
     /// <summary>
     /// Redis manager
@@ -120,40 +121,41 @@ namespace EZNEW.Cache.Redis
         /// </summary>
         /// <param name="cacheServer">Cache server</param>
         /// <returns></returns>
-        public static List<RedisDatabase> GetDatabases(CacheServer cacheServer)
+        public static RedisDatabase GetDatabase(CacheServer cacheServer)
         {
             if (string.IsNullOrEmpty(cacheServer?.Name))
             {
-                return new List<RedisDatabase>(0);
+                throw new ArgumentNullException(nameof(CacheServer.Name));
             }
-            if (cacheServer.Databases.IsNullOrEmpty())
+            var database = cacheServer.Database;
+            if (string.IsNullOrWhiteSpace(database))
             {
-                cacheServer.Databases = new List<string>(1) { "0" };
+                database = "0";
             }
-            List<RedisDatabase> databases = new List<RedisDatabase>(cacheServer.Databases.Count);
-            foreach (var db in cacheServer.Databases)
+            var dbName = $"{cacheServer.Name}_{cacheServer.Database}";
+            if (Databases.TryGetValue(dbName, out var nowDatabase))
             {
-                var dbName = $"{cacheServer.Name}_{db}";
-                if (Databases.TryGetValue(dbName, out var nowDatabase))
+                return nowDatabase;
+            }
+            else if (int.TryParse(database, out var dbIndex) && dbIndex >= 0 && ConnectionMultiplexers.TryGetValue(cacheServer.Name, out var conn) && conn != null)
+            {
+                lock (Databases)
                 {
-                    databases.Add(nowDatabase);
-                }
-                else if (int.TryParse(db, out var dbIndex) && dbIndex >= 0 && ConnectionMultiplexers.TryGetValue(cacheServer.Name, out var conn) && conn != null)
-                {
-                    lock (Databases)
+                    if (nowDatabase != null)
                     {
-                        nowDatabase = new RedisDatabase()
-                        {
-                            Index = dbIndex,
-                            Name = dbName,
-                            RemoteDatabase = conn.GetDatabase(dbIndex)
-                        };
-                        Databases[dbName] = nowDatabase;
-                        databases.Add(nowDatabase);
+                        return nowDatabase;
                     }
+                    nowDatabase = new RedisDatabase()
+                    {
+                        Index = dbIndex,
+                        Name = dbName,
+                        RemoteDatabase = conn.GetDatabase(dbIndex)
+                    };
+                    Databases[dbName] = nowDatabase;
+                    return nowDatabase;
                 }
             }
-            return databases;
+            throw new SixnetException($"Redis database {database} is invalid");
         }
 
         #endregion
@@ -218,7 +220,7 @@ namespace EZNEW.Cache.Redis
             }
             catch (Exception ex)
             {
-                LogManager.LogError<RedisProvider>(FrameworkLogEvents.Cache.ConnectionCacheServerError, ex, ex.Message);
+                SixnetLogger.LogError<RedisProvider>(SixnetLogEvents.Cache.ConnectionCacheServerError, ex, ex.Message);
                 if (!ignoreConnectionException)
                 {
                     throw ex;
@@ -240,22 +242,20 @@ namespace EZNEW.Cache.Redis
             {
                 return;
             }
-            if (server.Databases.IsNullOrEmpty())
+            var database = server.Database;
+            if (string.IsNullOrWhiteSpace(database))
             {
-                server.Databases = new List<string>(1) { "0" };
+                database = "0";
             }
-            foreach (var db in server.Databases)
+            if (int.TryParse(database, out var dbIndex) && dbIndex >= 0)
             {
-                if (int.TryParse(db, out var dbIndex) && dbIndex >= 0)
+                string databaseName = $"{server.Name}_{database}";
+                Databases[databaseName] = new RedisDatabase()
                 {
-                    string databaseName = $"{server.Name}_{db}";
-                    Databases[databaseName] = new RedisDatabase()
-                    {
-                        Name = databaseName,
-                        Index = dbIndex,
-                        RemoteDatabase = conn.GetDatabase(dbIndex)
-                    };
-                }
+                    Name = databaseName,
+                    Index = dbIndex,
+                    RemoteDatabase = conn.GetDatabase(dbIndex)
+                };
             }
             ConnectionMultiplexers[server.Name] = conn;
         }
@@ -268,7 +268,11 @@ namespace EZNEW.Cache.Redis
         /// <param name="ignoreConnectionException">Ignore connection exception</param>
         public static void RegisterServer(string serverName, CacheEndPoint endPoint, bool ignoreConnectionException = true)
         {
-            var server = new CacheServer(serverName, CacheServerType.Redis);
+            var server = new CacheServer() 
+            {
+                Name = serverName,
+                Type = CacheServerType.Redis
+            };
             RegisterServer(server, new CacheEndPoint[1] { endPoint }, ignoreConnectionException);
         }
 
@@ -304,16 +308,14 @@ namespace EZNEW.Cache.Redis
         /// <returns>options flags</returns>
         internal static CommandFlags GetCommandFlags(CacheCommandFlags cacheCommandFlags)
         {
-            CommandFlags cmdFlags = CommandFlags.None;
-            cmdFlags = cacheCommandFlags switch
+            CommandFlags cmdFlags = cacheCommandFlags switch
             {
                 CacheCommandFlags.DemandMaster => CommandFlags.DemandMaster,
-                CacheCommandFlags.DemandSlave => CommandFlags.DemandSlave,
+                CacheCommandFlags.DemandReplica => CommandFlags.DemandReplica,
                 CacheCommandFlags.FireAndForget => CommandFlags.FireAndForget,
-                CacheCommandFlags.HighPriority => CommandFlags.HighPriority,
                 CacheCommandFlags.NoRedirect => CommandFlags.NoRedirect,
                 CacheCommandFlags.NoScriptCache => CommandFlags.NoScriptCache,
-                CacheCommandFlags.PreferSlave => CommandFlags.PreferSlave,
+                CacheCommandFlags.PreferReplica => CommandFlags.PreferReplica,
                 _ => CommandFlags.None,
             };
             return cmdFlags;
