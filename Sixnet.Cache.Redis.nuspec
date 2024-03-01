@@ -23,5 +23,6 @@
   <files>
     <file src="Sixnet.Cache.Redis\bin\$configuration$\netstandard2.1\Sixnet.Cache.Redis.dll" target="lib\netstandard2.1" />
 	<file src="Sixnet.Cache.Redis\bin\$configuration$\netstandard2.1\Sixnet.Cache.Redis.pdb" target="lib\netstandard2.1" />
+	<file src=".\nugeticon.png" target="images\" />
   </files>
 </package>
