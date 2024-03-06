@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Sixnet.Cache.Server;
-using Sixnet.Cache.Server.Options;
+using Sixnet.Cache.Server.Parameters;
 
 namespace Sixnet.Cache.Redis
 {
@@ -78,7 +78,7 @@ namespace Sixnet.Cache.Redis
         /// <summary>
         /// Gets or sets save configuration
         /// </summary>
-        public List<DataChangeSaveOptions> SaveConfiguration
+        public List<DataChangeSaveParameter> SaveConfiguration
         {
             get; set;
         }
