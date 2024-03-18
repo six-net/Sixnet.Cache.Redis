@@ -54,7 +54,7 @@ namespace Sixnet.Cache.Redis
         /// <summary>
         /// Gets or sets the log level
         /// </summary>
-        public LogLevel LogLevel
+        public CacheLogLevel LogLevel
         {
             get; set;
         }

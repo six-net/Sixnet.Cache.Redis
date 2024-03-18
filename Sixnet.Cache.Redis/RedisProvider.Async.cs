@@ -2999,20 +2999,20 @@ namespace Sixnet.Cache.Redis
                                 config.TimeOut = timeOut;
                                 break;
                             case "loglevel":
-                                var logLevel = LogLevel.Verbose;
+                                var logLevel = CacheLogLevel.Verbose;
                                 switch (cfg.Value)
                                 {
                                     case "debug":
-                                        logLevel = LogLevel.Debug;
+                                        logLevel = CacheLogLevel.Debug;
                                         break;
                                     case "verbose":
-                                        logLevel = LogLevel.Verbose;
+                                        logLevel = CacheLogLevel.Verbose;
                                         break;
                                     case "notice":
-                                        logLevel = LogLevel.Notice;
+                                        logLevel = CacheLogLevel.Notice;
                                         break;
                                     case "warning":
-                                        logLevel = LogLevel.Warning;
+                                        logLevel = CacheLogLevel.Warning;
                                         break;
                                 }
                                 config.LogLevel = logLevel;
