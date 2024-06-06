@@ -10,9 +10,9 @@ using Sixnet.Exceptions;
 namespace Sixnet.Cache.Redis
 {
     /// <summary>
-    /// Redis manager
+    /// Sixnet redis manager
     /// </summary>
-    public static class RedisManager
+    public static class SixnetRedisManager
     {
         #region Expiration
 
@@ -132,7 +132,7 @@ namespace Sixnet.Cache.Redis
             {
                 database = "0";
             }
-            var dbName = $"{cacheServer.Name}_{cacheServer.Database}";
+            var dbName = $"{cacheServer.Name}_{database}";
             if (Databases.TryGetValue(dbName, out var nowDatabase))
             {
                 return nowDatabase;

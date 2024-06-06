@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Newtonsoft.Json.Linq;
 using Sixnet.Cache.Hash.Parameters;
 using Sixnet.Cache.Hash.Results;
 using Sixnet.Cache.Keys.Parameters;
@@ -16,7 +15,6 @@ using Sixnet.Cache.Set.Results;
 using Sixnet.Cache.SortedSet;
 using Sixnet.Cache.SortedSet.Parameters;
 using Sixnet.Cache.SortedSet.Results;
-using Sixnet.Cache.String;
 using Sixnet.Cache.String.Parameters;
 using Sixnet.Cache.String.Results;
 using Sixnet.Exceptions;
@@ -46,7 +44,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringSetRangeParameter)}.{nameof(StringSetRangeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetRangeStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringSetRangeResult()
@@ -63,17 +61,17 @@ namespace Sixnet.Cache.Redis
             var script = $@"local len=redis.call('SETRANGE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return len";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[] { parameter.Key.GetActualKey() };
             var parameters = new RedisValue[]
             {
                 parameter.Offset,
                 parameter.Value,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1 && RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1 && SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
             };
-            var commandFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var commandFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -102,7 +100,7 @@ return len";
             {
                 throw new ArgumentNullException($"{nameof(StringSetBitParameter)}.{nameof(StringSetBitParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetBitStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringSetBitResult()
@@ -119,7 +117,7 @@ return len";
             var script = $@"local obv=redis.call('SETBIT',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -129,11 +127,11 @@ return obv";
                 parameter.Offset,
                 parameter.Bit,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -160,7 +158,7 @@ return obv";
             {
                 return GetNoValueResponse<StringSetResult>(server);
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringSetResult()
@@ -176,13 +174,13 @@ return obv";
         {
             var itemCount = parameter.Items.Count;
             var valueCount = itemCount * 5;
-            var allowSlidingExpire = RedisManager.AllowSlidingExpiration();
+            var allowSlidingExpire = SixnetRedisManager.AllowSlidingExpiration();
             RedisKey[] setKeys = new RedisKey[itemCount];
             RedisValue[] setValues = new RedisValue[valueCount];
             for (var i = 0; i < itemCount; i++)
             {
                 var nowItem = parameter.Items[i];
-                var nowExpire = RedisManager.GetExpiration(nowItem.Expiration);
+                var nowExpire = SixnetRedisManager.GetExpiration(nowItem.Expiration);
                 setKeys[i] = nowItem.Key.GetActualKey();
 
                 var argIndex = i * 5;
@@ -190,8 +188,8 @@ return obv";
                 setValues[argIndex] = nowItem.Value.ToNullableString();
                 setValues[argIndex + 1] = nowItem.Expiration == null;
                 setValues[argIndex + 2] = allowSliding;
-                setValues[argIndex + 3] = nowExpire.Item2.HasValue ? RedisManager.GetTotalSeconds(nowExpire.Item2) : (allowSliding ? 0 : -1);
-                setValues[argIndex + 4] = RedisManager.GetSetWhenCommand(nowItem.When);
+                setValues[argIndex + 3] = nowExpire.Item2.HasValue ? SixnetRedisManager.GetTotalSeconds(nowExpire.Item2) : (allowSliding ? 0 : -1);
+                setValues[argIndex + 4] = SixnetRedisManager.GetSetWhenCommand(nowItem.When);
             }
             var script = $@"local skeys={{}}
 local ckey=''
@@ -202,7 +200,7 @@ for ki=1,{itemCount}
 do
     argBi=(ki-1)*5+1
     ckey=KEYS[ki]
-    exkey=ckey..'{RedisManager.ExpirationKeySuffix}'
+    exkey=ckey..'{SixnetRedisManager.ExpirationKeySuffix}'
     local setCmd=ARGV[argBi+4]
     if(setCmd=='')
     then
@@ -243,7 +241,7 @@ do
     end
 end
 return skeys";
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -269,7 +267,7 @@ return skeys";
             {
                 throw new ArgumentNullException($"{nameof(StringLengthParameter)}.{nameof(StringLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringLengthStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringLengthResult()
@@ -293,11 +291,11 @@ return obv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -326,7 +324,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringIncrementParameter)}.{nameof(StringIncrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringIncrementStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringIncrementResult()
@@ -343,7 +341,7 @@ return obv";
             var script = $@"local obv=redis.call('INCRBY',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -352,11 +350,11 @@ return obv";
             {
                 parameter.Value,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -384,7 +382,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringGetWithExpiryParameter)}.{nameof(StringGetWithExpiryParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetWithExpiryStatement(parameter);
             var result = (RedisValue[])(ExecuteStatement(server, database, statement));
             return new StringGetWithExpiryResult()
@@ -417,11 +415,11 @@ return res";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -447,7 +445,7 @@ return res";
             {
                 throw new ArgumentNullException($"{nameof(StringGetSetParameter)}.{nameof(StringGetSetParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetSetStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringGetSetResult()
@@ -464,7 +462,7 @@ return res";
             var script = $@"local ov=redis.call('GETSET',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return ov";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -473,11 +471,11 @@ return ov";
             {
                 parameter.NewValue,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -506,7 +504,7 @@ return ov";
             {
                 throw new ArgumentNullException($"{nameof(StringGetRangeParameter)}.{nameof(StringGetRangeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetRangeStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringGetRangeResult()
@@ -532,11 +530,11 @@ return ov";
                 parameter.Start,
                 parameter.End,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -564,7 +562,7 @@ return ov";
             {
                 throw new ArgumentNullException($"{nameof(StringGetBitParameter)}.{nameof(StringGetBitParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetBitStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringGetBitResult()
@@ -589,11 +587,11 @@ return ov";
             {
                 parameter.Offset,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -620,7 +618,7 @@ return ov";
             {
                 return GetNoKeyResponse<StringGetResult>(server);
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetStatement(parameter);
             var result = (RedisValue[])(ExecuteStatement(server, database, statement));
             return new StringGetResult()
@@ -660,11 +658,11 @@ return vals";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -693,7 +691,7 @@ return vals";
             {
                 throw new ArgumentNullException($"{nameof(StringDecrementParameter)}.{nameof(StringDecrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringDecrementStatement(parameter);
             var result = ExecuteStatement(server, database, statement);
             return new StringDecrementResult()
@@ -710,7 +708,7 @@ return vals";
             var script = $@"local obv=redis.call('DECRBY',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -719,11 +717,11 @@ return obv";
             {
                 parameter.Value,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -755,7 +753,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringBitPositionParameter)}.{nameof(StringBitPositionParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitPositionStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new StringBitPositionResult()
@@ -783,11 +781,11 @@ return obv";
                 parameter.Start,
                 parameter.End,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -821,7 +819,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringBitOperationParameter)}.{nameof(StringBitOperationParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitOperationStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new StringBitOperationResult()
@@ -848,19 +846,19 @@ return obv";
 {GetRefreshExpirationScript(-1)}
 {GetRefreshExpirationScript(2, 1, parameter.Keys.Count)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
-            bool allowSlidingExpiration = RedisManager.AllowSlidingExpiration();
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
+            bool allowSlidingExpiration = SixnetRedisManager.AllowSlidingExpiration();
             var parameters = new RedisValue[]
             {
-                RedisManager.GetBitOperator(parameter.Bitwise),
+                SixnetRedisManager.GetBitOperator(parameter.Bitwise),
                 parameter.Expiration==null,//refresh current time
                 expire.Item1&&allowSlidingExpiration,//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds,
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds,
                 true,//refresh current time-source key
                 allowSlidingExpiration,//whether allow set refresh time-source key,
                 0//expire time seconds-source key
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -891,7 +889,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringBitCountParameter)}.{nameof(StringBitCountParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitCountStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new StringBitCountResult()
@@ -917,11 +915,11 @@ return obv";
                 parameter.Start,
                 parameter.End,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -949,7 +947,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(StringAppendParameter)}.{nameof(StringAppendParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringAppendStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new StringAppendResult()
@@ -966,7 +964,7 @@ return obv";
             var script = $@"local obv=redis.call('APPEND',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -975,11 +973,11 @@ return obv";
             {
                 parameter.Value,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1015,7 +1013,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(ListTrimParameter)}.{nameof(ListTrimParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListTrimStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListTrimResult()
@@ -1039,11 +1037,11 @@ return obv";
                 parameter.Start,
                 parameter.Stop,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1070,7 +1068,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(ListSetByIndexParameter)}.{nameof(ListSetByIndexParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListSetByIndexStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new ListSetByIndexResult()
@@ -1095,10 +1093,10 @@ return obv['ok']";
                 parameter.Index,
                 parameter.Value,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1133,7 +1131,7 @@ return obv['ok']";
             {
                 throw new ArgumentException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Values)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPushStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListRightPushResult()
@@ -1157,15 +1155,15 @@ return obv['ok']";
             var script = $@"local obv=redis.call('RPUSH',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(parameter.Values.Count - 2)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             values[values.Length - 3] = parameter.Expiration == null;//refresh current time
-            values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            values[values.Length - 2] = expire.Item1 && SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 1] = SixnetRedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1197,7 +1195,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(ListRightPopLeftPushParameter)}.{nameof(ListRightPopLeftPushParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPopLeftPushStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new ListRightPopLeftPushResult()
@@ -1215,8 +1213,8 @@ return obv";
 {GetRefreshExpirationScript(-2)}
 {GetRefreshExpirationScript(1, 1)}
 return pv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
-            bool allowSlidingExpiration = RedisManager.AllowSlidingExpiration();
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
+            bool allowSlidingExpiration = SixnetRedisManager.AllowSlidingExpiration();
             var keys = new RedisKey[]
             {
                 parameter.SourceKey.GetActualKey(),
@@ -1230,10 +1228,10 @@ return pv";
 
                 parameter.Expiration==null,//refresh current time
                 expire.Item1&&allowSlidingExpiration,//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2)//expire time seconds
+                SixnetRedisManager.GetTotalSeconds(expire.Item2)//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1259,7 +1257,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(ListRightPopParameter)}.{nameof(ListRightPopParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPopStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new ListRightPopResult()
@@ -1283,11 +1281,11 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1317,7 +1315,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(ListRemoveParameter)}.{nameof(ListRemoveParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRemoveStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListRemoveResult()
@@ -1343,11 +1341,11 @@ return rc";
                 parameter.Count,
                 parameter.Value,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1379,7 +1377,7 @@ return rc";
             {
                 throw new ArgumentNullException($"{nameof(ListRangeParameter)}.{nameof(ListRangeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRangeStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new ListRangeResult()
@@ -1405,11 +1403,11 @@ return rc";
                 parameter.Start,
                 parameter.Stop,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1436,7 +1434,7 @@ return rc";
             {
                 throw new ArgumentNullException($"{nameof(ListLengthParameter)}.{nameof(ListLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLengthStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListLengthResult()
@@ -1460,11 +1458,11 @@ return len";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1495,7 +1493,7 @@ return len";
             {
                 throw new ArgumentException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Values)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLeftPushStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListLeftPushResult()
@@ -1519,15 +1517,15 @@ return len";
             var script = $@"local obv=redis.call('LPUSH',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(parameter.Values.Count - 2)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             values[values.Length - 3] = parameter.Expiration == null;//refresh current time
-            values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            values[values.Length - 2] = expire.Item1 && SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 1] = SixnetRedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1553,7 +1551,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(ListLeftPopParameter)}.{nameof(ListLeftPopParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLeftPopStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new ListLeftPopResult()
@@ -1577,11 +1575,11 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1609,7 +1607,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(ListInsertBeforeParameter)}.{nameof(ListInsertBeforeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListInsertBeforeStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListInsertBeforeResult()
@@ -1635,11 +1633,11 @@ return pv";
                 parameter.PivotValue,
                 parameter.InsertValue,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1667,7 +1665,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(ListInsertAfterParameter)}.{nameof(ListInsertAfterParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListInsertAfterStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ListInsertAfterResult()
@@ -1693,11 +1691,11 @@ return pv";
                 parameter.PivotValue,
                 parameter.InsertValue,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1726,7 +1724,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(ListInsertAfterParameter)}.{nameof(ListInsertAfterParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListGetByIndexStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new ListGetByIndexResult()
@@ -1751,11 +1749,11 @@ return pv";
             {
                 parameter.Index,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1785,7 +1783,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashValuesParameter)}.{nameof(HashValuesParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashValuesStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new HashValuesResult()
@@ -1809,11 +1807,11 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1844,7 +1842,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashSetParameter)}.{nameof(HashSetParameter.Items)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashSetStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new HashSetResult()
@@ -1872,15 +1870,15 @@ return pv";
             var script = $@"local obv=redis.call('HMSET',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(valueCount - 2)}
 return obv['ok']";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             values[values.Length - 3] = parameter.Expiration == null;//refresh current time
-            values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            values[values.Length - 2] = expire.Item1 && SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 1] = SixnetRedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1906,7 +1904,7 @@ return obv['ok']";
             {
                 throw new ArgumentNullException($"{nameof(HashLengthParameter)}.{nameof(HashLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashLengthStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new HashLengthResult()
@@ -1930,11 +1928,11 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -1960,7 +1958,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashKeysParameter)}.{nameof(HashKeysParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashKeysStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new HashKeysResult()
@@ -1984,11 +1982,11 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2021,7 +2019,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashIncrementParameter)}.{nameof(HashIncrementParameter.IncrementValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var cacheKey = parameter.Key.GetActualKey();
             var newValue = parameter.IncrementValue;
             var dataType = parameter.IncrementValue.GetType();
@@ -2066,21 +2064,21 @@ return pv";
         RedisStatement GetHashIncrementStatement(HashIncrementParameter parameter, bool integerValue, string cacheKey)
         {
             var keys = new RedisKey[1] { cacheKey };
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var values = new RedisValue[]
             {
                 parameter.HashField,
                 parameter.IncrementValue,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
             };
             var script = "";
 
             script = @$"local obv=redis.call('{(integerValue ? "HINCRBY" : "HINCRBYFLOAT")}',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript(-2)}
 return obv";
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2110,7 +2108,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(HashGetParameter)}.{nameof(HashGetParameter.HashField)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashGetStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new HashGetResult()
@@ -2135,11 +2133,11 @@ return pv";
             {
                 parameter.HashField,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2165,7 +2163,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashGetAllParameter)}.{nameof(HashGetAllParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashGetAllStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             var values = new Dictionary<string, dynamic>(result.Length / 2);
@@ -2194,11 +2192,11 @@ return pv";
             var parameters = new RedisValue[3]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2228,7 +2226,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashExistsParameter)}.{nameof(HashExistsParameter.HashField)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashExistStatement(parameter);
             var result = (int)ExecuteStatement(server, database, statement);
             return new HashExistsResult()
@@ -2253,11 +2251,11 @@ return pv";
             {
                 parameter.HashField,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2288,7 +2286,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashDeleteParameter)}.{nameof(HashDeleteParameter.HashFields)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashDeleteStatement(parameter);
             var result = (int)ExecuteStatement(server, database, statement);
             return new HashDeleteResult()
@@ -2309,7 +2307,7 @@ return pv";
                 valueParameters[i] = $"{Arg(i + 1)}";
             }
             values[values.Length - 3] = true;//refresh current time
-            values[values.Length - 2] = RedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 2] = SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
             values[values.Length - 1] = 0;//expire time seconds
             var script = $@"local pv=redis.call('HDEL',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(valueParameters.Length - 2)}
@@ -2318,7 +2316,7 @@ return pv";
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2350,7 +2348,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(HashDecrementParameter)}.{nameof(HashDecrementParameter.DecrementValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var dataType = parameter.DecrementValue.GetType();
             var typeCode = Type.GetTypeCode(dataType);
             dynamic newValue = parameter.DecrementValue;
@@ -2395,20 +2393,20 @@ return pv";
         RedisStatement GetHashDecrementStatement(HashDecrementParameter parameter, bool integerValue, string cacheKey)
         {
             var keys = new RedisKey[1] { cacheKey };
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var values = new RedisValue[]
             {
                 parameter.HashField,
                 -parameter.DecrementValue,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
             };
             var script = "";
             script = @$"local obv=redis.call('{(integerValue ? "HINCRBY" : "HINCRBYFLOAT")}',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript(-2)}
 return obv";
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2434,7 +2432,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(HashScanParameter)}.{nameof(HashScanParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashScanStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             long newCursor = 0;
@@ -2486,14 +2484,14 @@ return obv";
             var parameters = new RedisValue[6]
             {
                 parameter.Cursor,
-                RedisManager.GetMatchPattern(parameter.Pattern,parameter.PatternType),
+                SixnetRedisManager.GetMatchPattern(parameter.Pattern,parameter.PatternType),
                 parameter.PageSize,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2524,11 +2522,11 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.Key)}");
             }
-            if (parameter.RemoveMembers.IsNullOrEmpty())
+            if (parameter.Members.IsNullOrEmpty())
             {
-                throw new ArgumentException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.RemoveMembers)}");
+                throw new ArgumentException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.Members)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRemoveStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SetRemoveResult()
@@ -2542,24 +2540,24 @@ return obv";
 
         RedisStatement GetSetRemoveStatement(SetRemoveParameter parameter)
         {
-            var values = new RedisValue[parameter.RemoveMembers.Count + 3];
-            var valueParameters = new string[parameter.RemoveMembers.Count];
-            for (var i = 0; i < parameter.RemoveMembers.Count; i++)
+            var values = new RedisValue[parameter.Members.Count + 3];
+            var valueParameters = new string[parameter.Members.Count];
+            for (var i = 0; i < parameter.Members.Count; i++)
             {
-                values[i] = parameter.RemoveMembers[i];
+                values[i] = parameter.Members[i];
                 valueParameters[i] = $"{Arg(i + 1)}";
             }
             values[values.Length - 3] = true;//refresh current time
-            values[values.Length - 2] = RedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 2] = SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
             values[values.Length - 1] = 0;//expire time seconds
             var script = $@"local obv=redis.call('SREM',{Keys(1)},{string.Join(",", valueParameters)})
-{GetRefreshExpirationScript(parameter.RemoveMembers.Count - 2)}
+{GetRefreshExpirationScript(parameter.Members.Count - 2)}
 return obv";
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2588,7 +2586,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SetRandomMembersParameter)}.{nameof(SetRandomMembersParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRandomMembersStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SetRandomMembersResult()
@@ -2613,11 +2611,11 @@ return pv";
             {
                 parameter.Count,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2643,7 +2641,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetRandomMemberParameter)}.{nameof(SetRandomMemberParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRandomMemberStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new SetRandomMemberResult()
@@ -2667,10 +2665,10 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2696,7 +2694,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetPopParameter)}.{nameof(SetPopParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetPopStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new SetPopResult()
@@ -2720,10 +2718,10 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2760,7 +2758,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetMoveParameter)}.{nameof(SetMoveParameter.MoveMember)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetMoveStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new SetMoveResult()
@@ -2777,8 +2775,8 @@ return pv";
 {GetRefreshExpirationScript(-1)}
 {GetRefreshExpirationScript(2, 1)}
 return pv";
-            var allowSliding = RedisManager.AllowSlidingExpiration();
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var allowSliding = SixnetRedisManager.AllowSlidingExpiration();
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.SourceKey.GetActualKey(),
@@ -2792,9 +2790,9 @@ return pv";
                 0,//expire time seconds
                 parameter.Expiration==null,//refresh current time-destination key
                 expire.Item1&&allowSliding,//whether allow set refresh time-destination key
-                RedisManager.GetTotalSeconds(expire.Item2)//expire time seconds-destination key
+                SixnetRedisManager.GetTotalSeconds(expire.Item2)//expire time seconds-destination key
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2820,7 +2818,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetMembersParameter)}.{nameof(SetMembersParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetMembersStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SetMembersResult()
@@ -2844,10 +2842,10 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2873,7 +2871,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetLengthParameter)}.{nameof(SetLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetLengthStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SetLengthResult()
@@ -2897,10 +2895,10 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2930,7 +2928,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetContainsParameter)}.{nameof(SetContainsParameter.Member)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetContainsStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new SetContainsResult()
@@ -2955,10 +2953,10 @@ return pv";
             {
                 parameter.Member,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -2985,7 +2983,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetCombineParameter)}.{nameof(SetCombineParameter.Keys)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetCombineStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SetCombineResult()
@@ -3006,16 +3004,16 @@ return pv";
                 keys[i] = parameter.Keys[i].GetActualKey();
                 keyParameters.Add($"{Keys(i + 1)}");
             }
-            var script = $@"local pv=redis.call('{RedisManager.GetSetCombineCommand(parameter.CombineOperation)}',{string.Join(",", keyParameters)})
+            var script = $@"local pv=redis.call('{SixnetRedisManager.GetSetCombineCommand(parameter.CombineOperation)}',{string.Join(",", keyParameters)})
 {GetRefreshExpirationScript(-2, keyCount: keys.Length)}
 return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3046,7 +3044,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SetCombineAndStoreParameter)}.{nameof(SetCombineAndStoreParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetCombineAndStoreStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SetCombineAndStoreResult()
@@ -3069,12 +3067,12 @@ return pv";
                 keys[i + 1] = parameter.SourceKeys[i].GetActualKey();
                 keyParameters.Add($"{Keys(i + 2)}");
             }
-            var script = $@"local pv=redis.call('{RedisManager.GetSetCombineCommand(parameter.CombineOperation)}STORE',{string.Join(",", keyParameters)})
+            var script = $@"local pv=redis.call('{SixnetRedisManager.GetSetCombineCommand(parameter.CombineOperation)}STORE',{string.Join(",", keyParameters)})
 {GetRefreshExpirationScript(-2, 1, keyCount: keys.Length - 1)}
 {GetRefreshExpirationScript(1)}
 return pv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
-            bool allowSliding = RedisManager.AllowSlidingExpiration();
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
+            bool allowSliding = SixnetRedisManager.AllowSlidingExpiration();
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
@@ -3082,9 +3080,9 @@ return pv";
                 0,//expire time seconds
                 parameter.Expiration==null,// des key
                 expire.Item1&&allowSliding,//des key
-                RedisManager.GetTotalSeconds(expire.Item2)
+                SixnetRedisManager.GetTotalSeconds(expire.Item2)
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3116,7 +3114,7 @@ return pv";
             {
                 throw new ArgumentException($"{nameof(SetAddParameter)}.{nameof(SetAddParameter.Members)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetAddStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SetAddResult()
@@ -3129,7 +3127,7 @@ return pv";
 
         RedisStatement GetSetAddStatement(SetAddParameter parameter)
         {
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var values = new RedisValue[parameter.Members.Count + 3];
             var valueParameters = new string[parameter.Members.Count];
             for (var i = 0; i < parameter.Members.Count; i++)
@@ -3138,8 +3136,8 @@ return pv";
                 valueParameters[i] = $"{Arg(i + 1)}";
             }
             values[values.Length - 3] = parameter.Expiration == null;//refresh current time
-            values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            values[values.Length - 2] = expire.Item1 && SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 1] = SixnetRedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var script = $@"local obv=redis.call('SADD',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(parameter.Members.Count - 2)}
 return obv";
@@ -3147,7 +3145,7 @@ return obv";
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3182,7 +3180,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetScoreParameter)}.{nameof(SortedSetScoreParameter.Member)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetScoreStatement(parameter);
             var result = (double?)ExecuteStatement(server, database, statement);
             return new SortedSetScoreResult()
@@ -3207,10 +3205,10 @@ return pv";
             {
                 parameter.Member,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3246,7 +3244,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MaxValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByValueStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetRemoveRangeByValueResult()
@@ -3272,11 +3270,11 @@ return pv";
                 FormatSortedSetRangeBoundary(parameter.MinValue,true,parameter.Exclude),
                 FormatSortedSetRangeBoundary(parameter.MaxValue,false,parameter.Exclude),
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3303,7 +3301,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByScoreParameter)}.{nameof(SortedSetRemoveRangeByScoreParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByScoreStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetRemoveRangeByScoreResult()
@@ -3329,10 +3327,10 @@ return pv";
                 FormatSortedSetScoreRangeBoundary(parameter.Start,true,parameter.Exclude),
                 FormatSortedSetScoreRangeBoundary(parameter.Stop,false,parameter.Exclude),
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3363,7 +3361,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByRankParameter)}.{nameof(SortedSetRemoveRangeByRankParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByRankStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetRemoveRangeByRankResult()
@@ -3389,10 +3387,10 @@ return pv";
                 parameter.Start,
                 parameter.Stop,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3423,7 +3421,7 @@ return pv";
             {
                 throw new ArgumentException($"{nameof(SortedSetRemoveParameter)}.{nameof(SortedSetRemoveParameter.RemoveMembers)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetRemoveResult()
@@ -3445,7 +3443,7 @@ return pv";
                 valueParameters[i] = $"{Arg(i + 1)}";
             }
             values[values.Length - 3] = true;//refresh current time
-            values[values.Length - 2] = RedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 2] = SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
             values[values.Length - 1] = 0;//expire time seconds
             var script = $@"local obv=redis.call('ZREM',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(parameter.RemoveMembers.Count - 2)}
@@ -3454,7 +3452,7 @@ return obv";
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3486,7 +3484,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRankParameter)}.{nameof(SortedSetRankParameter.Member)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRankStatement(parameter);
             var result = (long?)ExecuteStatement(server, database, statement);
             return new SortedSetRankResult()
@@ -3511,10 +3509,10 @@ return pv";
             {
                 parameter.Member,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3550,7 +3548,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MaxValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByValueStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SortedSetRangeByValueResult()
@@ -3592,11 +3590,11 @@ return pv";
                 parameter.Offset,
                 parameter.Count,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3626,7 +3624,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreWithScoresParameter)}.{nameof(SortedSetRangeByScoreWithScoresParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByScoreWithScoresStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
@@ -3679,11 +3677,11 @@ return pv";
                 parameter.Offset,
                 parameter.Count,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3713,7 +3711,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreParameter)}.{nameof(SortedSetRangeByScoreParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByScoreStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SortedSetRangeByScoreResult()
@@ -3755,11 +3753,11 @@ return pv";
                 parameter.Offset,
                 parameter.Count,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3791,7 +3789,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByRankWithScoresParameter)}.{nameof(SortedSetRangeByRankWithScoresParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByRankWithScoresStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
@@ -3828,11 +3826,11 @@ return pv";
                 parameter.Start,
                 parameter.Stop,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3864,7 +3862,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByRankParameter)}.{nameof(SortedSetRangeByRankParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByRankStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SortedSetRangeByRankResult()
@@ -3890,11 +3888,11 @@ return pv";
                 parameter.Start,
                 parameter.Stop,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3930,7 +3928,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.MaxValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetLengthByValueStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetLengthByValueResult()
@@ -3956,10 +3954,10 @@ return pv";
                 $"[{parameter.MinValue}",
                 $"[{parameter.MaxValue}",
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -3986,7 +3984,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetLengthStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetLengthResult()
@@ -4010,10 +4008,10 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4041,7 +4039,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetIncrementParameter)}.{nameof(SortedSetIncrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetIncrementStatement(parameter);
             var result = (double)ExecuteStatement(server, database, statement);
             return new SortedSetIncrementResult()
@@ -4055,7 +4053,7 @@ return pv";
 
         RedisStatement GetSortedSetIncrementStatement(SortedSetIncrementParameter parameter)
         {
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -4065,13 +4063,13 @@ return pv";
                 parameter.IncrementScore,
                 parameter.Member,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
              };
             var script = $@"local pv=redis.call('ZINCRBY',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4099,7 +4097,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetDecrementParameter)}.{nameof(SortedSetDecrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetDecrementStatement(parameter);
             var result = (double)ExecuteStatement(server, database, statement);
             return new SortedSetDecrementResult()
@@ -4116,7 +4114,7 @@ return pv";
             var script = $@"local pv=redis.call('ZINCRBY',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -4126,11 +4124,11 @@ return pv";
                 -parameter.DecrementScore,
                 parameter.Member,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4162,7 +4160,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SortedSetCombineAndStoreParameter)}.{nameof(SortedSetCombineAndStoreParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetCombineAndStoreStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetCombineAndStoreResult()
@@ -4187,12 +4185,12 @@ return pv";
                 weights[i] = parameter.Weights?.ElementAt(i) ?? 1;
             }
             var optionScript = new StringBuilder();
-            var script = $@"local pv=redis.call('{RedisManager.GetSortedSetCombineCommand(parameter.CombineOperation)}',{Keys(1)},'{keyParameters.Count}',{string.Join(",", keyParameters)},'WEIGHTS',{string.Join(",", weights)},'AGGREGATE','{RedisManager.GetSortedSetAggregateName(parameter.Aggregate)}')
+            var script = $@"local pv=redis.call('{SixnetRedisManager.GetSortedSetCombineCommand(parameter.CombineOperation)}',{Keys(1)},'{keyParameters.Count}',{string.Join(",", keyParameters)},'WEIGHTS',{string.Join(",", weights)},'AGGREGATE','{SixnetRedisManager.GetSortedSetAggregateName(parameter.Aggregate)}')
 {GetRefreshExpirationScript(1)}
 {GetRefreshExpirationScript(-2, 1, keyCount: keys.Length - 1)}
 return pv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
-            var allowSliding = RedisManager.AllowSlidingExpiration();
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
+            var allowSliding = SixnetRedisManager.AllowSlidingExpiration();
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
@@ -4200,9 +4198,9 @@ return pv";
                 0,//expire time seconds
                 parameter.Expiration==null,// des key
                 expire.Item1&&allowSliding,//des key
-                RedisManager.GetTotalSeconds(expire.Item2)
+                SixnetRedisManager.GetTotalSeconds(expire.Item2)
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4235,7 +4233,7 @@ return pv";
             {
                 throw new ArgumentException($"{nameof(SortedSetAddParameter)}.{nameof(SortedSetAddParameter.Members)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetAddStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortedSetAddResult()
@@ -4249,7 +4247,7 @@ return pv";
 
         RedisStatement GetSortedSetAddStatement(SortedSetAddParameter parameter)
         {
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var valueCount = parameter.Members.Count * 2;
             var values = new RedisValue[valueCount + 3];
             var valueParameters = new string[valueCount];
@@ -4263,8 +4261,8 @@ return pv";
                 valueParameters[argIndex + 1] = $"{Arg(argIndex + 2)}";
             }
             values[values.Length - 3] = parameter.Expiration == null;//refresh current time
-            values[values.Length - 2] = expire.Item1 && RedisManager.AllowSlidingExpiration();//whether allow set refresh time
-            values[values.Length - 1] = RedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
+            values[values.Length - 2] = expire.Item1 && SixnetRedisManager.AllowSlidingExpiration();//whether allow set refresh time
+            values[values.Length - 1] = SixnetRedisManager.GetTotalSeconds(expire.Item2);//expire time seconds
             var script = $@"local obv=redis.call('ZADD',{Keys(1)},{string.Join(",", valueParameters)})
 {GetRefreshExpirationScript(valueCount - 2)}
 return obv";
@@ -4272,7 +4270,7 @@ return obv";
             {
                 parameter.Key.GetActualKey()
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4309,7 +4307,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortParameter)}.{nameof(SortParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortStatement(parameter);
             var result = (RedisValue[])ExecuteStatement(server, database, statement);
             return new SortResult()
@@ -4335,10 +4333,10 @@ return obv";
                 parameter.Offset,
                 parameter.Count,
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4375,7 +4373,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(SortAndStoreParameter)}.{nameof(SortAndStoreParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortAndStoreStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new SortAndStoreResult()
@@ -4393,8 +4391,8 @@ return obv";
 {GetRefreshExpirationScript()}
 {GetRefreshExpirationScript(3, 1)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
-            var allowSliding = RedisManager.AllowSlidingExpiration();
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
+            var allowSliding = SixnetRedisManager.AllowSlidingExpiration();
             var keys = new RedisKey[]
             {
                 parameter.SourceKey.GetActualKey(),
@@ -4409,9 +4407,9 @@ return obv";
                 0,//expire time seconds
                 parameter.Expiration==null,//refresh current time-des key
                 expire.Item1&&allowSliding,//allow set refresh time-deskey
-                RedisManager.GetTotalSeconds(expire.Item2)//-deskey
+                SixnetRedisManager.GetTotalSeconds(expire.Item2)//-deskey
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4442,13 +4440,13 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(TypeParameter)}.{nameof(TypeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyTypeStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new TypeResult()
             {
                 Success = true,
-                KeyType = RedisManager.GetCacheKeyType(result),
+                KeyType = SixnetRedisManager.GetCacheKeyType(result),
                 CacheServer = server,
                 Database = database
             };
@@ -4466,10 +4464,10 @@ return obv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4497,7 +4495,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(TimeToLiveParameter)}.{nameof(TimeToLiveParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyTimeToLiveStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new TimeToLiveResult()
@@ -4523,11 +4521,11 @@ return obv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4555,7 +4553,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(RestoreParameter)}.{nameof(RestoreParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRestoreStatement(parameter);
             var result = (bool)ExecuteStatement(server, database, statement);
             return new RestoreResult()
@@ -4571,7 +4569,7 @@ return obv";
             var script = $@"local obv= string.lower(tostring(redis.call('RESTORE',{Keys(1)},'0',{Arg(1)})))=='ok'
 {GetRefreshExpirationScript(-1)}
 return obv";
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
             var keys = new RedisKey[]
             {
                 parameter.Key.GetActualKey()
@@ -4580,10 +4578,10 @@ return obv";
             {
                 parameter.Value,
                 parameter.Expiration==null,//refresh current time
-                expire.Item1&&RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
-                RedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
+                expire.Item1&&SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.GetTotalSeconds(expire.Item2),//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4614,7 +4612,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(RenameParameter)}.{nameof(RenameParameter.NewKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRenameStatement(parameter);
             var result = (bool)ExecuteStatement(server, database, statement);
             return new RenameResult()
@@ -4645,11 +4643,11 @@ return false";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4671,7 +4669,7 @@ return false";
         /// <returns>key random result</returns>
         public RandomResult KeyRandom(CacheServer server, RandomParameter parameter)
         {
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRandomStatement(parameter);
             var result = (string)ExecuteStatement(server, database, statement);
             return new RandomResult()
@@ -4688,7 +4686,7 @@ return false";
             var script = $@"local obv=redis.call('RANDOMKEY')
 if obv
 then
-    local exkey=obv..'{RedisManager.ExpirationKeySuffix}' 
+    local exkey=obv..'{SixnetRedisManager.ExpirationKeySuffix}' 
     local ct=redis.call('GET',exkey)
     if ct 
     then
@@ -4702,7 +4700,7 @@ end
 return obv";
             var keys = new RedisKey[0];
             var parameters = new RedisValue[0];
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Script = script,
@@ -4729,7 +4727,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(PersistParameter)}.{nameof(PersistParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyPersistStatement(parameter);
             var result = (bool)ExecuteStatement(server, database, statement);
             return new PersistResult()
@@ -4745,7 +4743,7 @@ return obv";
             var cacheKey = parameter.Key.GetActualKey();
             var keys = new RedisKey[1] { cacheKey };
             var parameters = new RedisValue[0];
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             var script = $@"local obv=redis.call('PERSIST',{Keys(1)})==1
 if obv
 then
@@ -4784,7 +4782,7 @@ return obv";
             {
                 throw new ArgumentException($"{nameof(MoveParameter)}.{nameof(MoveParameter.DatabaseName)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyMoveStatement(parameter);
             var result = (bool)ExecuteStatement(server, database, statement);
             return new MoveResult()
@@ -4803,7 +4801,7 @@ return obv";
             {
                 parameter.DatabaseName
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             var script = $@"local obv=redis.call('MOVE',{Keys(1)},{Arg(1)})==1
 local exkey='{GetExpirationKey(cacheKey)}' 
 local ct=redis.call('GET',exkey)
@@ -4853,7 +4851,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(MigrateKeyParameter)}.{nameof(MigrateKeyParameter.Destination)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyMigrateStatement(parameter);
             var result = (bool)ExecuteStatement(server, database, statement);
             return new MigrateKeyResult()
@@ -4872,7 +4870,7 @@ return obv";
             {
                 parameter.CopyCurrent
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             var script = $@"local obv=string.lower(tostring(redis.call('MIGRATE','{parameter.Destination.Port}','{parameter.Destination.Host}',{Keys(1)},'{parameter.TimeOutMilliseconds}'{(parameter.CopyCurrent ? ",'COPY'" : string.Empty)}{(parameter.ReplaceDestination ? ",'REPLACE'" : string.Empty)})))
 if {Arg(1)}=='1'
 then
@@ -4915,7 +4913,7 @@ return obv";
             {
                 throw new ArgumentNullException($"{nameof(ExpireParameter)}.{nameof(ExpireParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyExpireStatement(parameter);
             var result = (bool)ExecuteStatement(server, database, statement);
             return new ExpireResult()
@@ -4929,13 +4927,13 @@ return obv";
         RedisStatement GetKeyExpireStatement(ExpireParameter parameter)
         {
             var cacheKey = parameter.Key.GetActualKey();
-            var expire = RedisManager.GetExpiration(parameter.Expiration);
-            var seconds = RedisManager.GetTotalSeconds(expire.Item2);
+            var expire = SixnetRedisManager.GetExpiration(parameter.Expiration);
+            var seconds = SixnetRedisManager.GetTotalSeconds(expire.Item2);
             var keys = new RedisKey[0];
             var parameters = new RedisValue[0];
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             var script = $@"local rs=redis.call('EXPIRE','{cacheKey}','{seconds}')==1
-if rs and '{(expire.Item1 && RedisManager.AllowSlidingExpiration() ? "1" : "0")}'=='1'
+if rs and '{(expire.Item1 && SixnetRedisManager.AllowSlidingExpiration() ? "1" : "0")}'=='1'
 then
     redis.call('SET','{GetExpirationKey(cacheKey)}','{seconds}','EX','{seconds}')
 end
@@ -4967,7 +4965,7 @@ return rs";
             {
                 throw new ArgumentNullException($"{nameof(DumpParameter)}.{nameof(DumpParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyDumpStatement(parameter);
             var result = (byte[])ExecuteStatement(server, database, statement);
             return new DumpResult()
@@ -4988,10 +4986,10 @@ return rs";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             var script = $@"local pv=redis.call('DUMP',{Keys(1)})
 {GetRefreshExpirationScript(-2)}
 return pv";
@@ -5020,7 +5018,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(DeleteParameter)}.{nameof(DeleteParameter.Keys)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyDeleteStatement(parameter);
             var count = database.RemoteDatabase.KeyDelete(statement.Keys, statement.Flags);
             return new DeleteResult()
@@ -5035,7 +5033,7 @@ return pv";
         RedisStatement GetKeyDeleteStatement(DeleteParameter parameter)
         {
             var keys = parameter.Keys.Select(c => { RedisKey key = c.GetActualKey(); return key; }).ToArray();
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             return new RedisStatement()
             {
                 Keys = keys,
@@ -5059,7 +5057,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(ExistParameter)}.{nameof(ExistParameter.Keys)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyExistStatement(parameter);
             var result = (long)ExecuteStatement(server, database, statement);
             return new ExistResult()
@@ -5083,11 +5081,11 @@ return pv";
             var parameters = new RedisValue[]
             {
                 true,//refresh current time
-                RedisManager.AllowSlidingExpiration(),//whether allow set refresh time
+                SixnetRedisManager.AllowSlidingExpiration(),//whether allow set refresh time
                 0,//expire time seconds
 
             };
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
             var script = $@"local pv=redis.call('EXISTS',{string.Join(",", redisKeyParameters)})
 {GetRefreshExpirationScript(-2)}
 return pv";
@@ -5124,7 +5122,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(GetAllDataBaseParameter)}.{nameof(GetAllDataBaseParameter.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var response = new GetAllDataBaseResult()
                 {
@@ -5193,7 +5191,7 @@ return pv";
                         break;
                 }
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 var keys = redisServer.Keys(dbIndex, searchString, query.PageSize, 0, (query.Page - 1) * query.PageSize, CommandFlags.None);
@@ -5235,8 +5233,8 @@ return pv";
             {
                 throw new SixnetException($"Redis database {server.Database} is invalid");
             }
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 redisServer.FlushDatabase(dbIndex, cmdFlags);
@@ -5278,11 +5276,11 @@ return pv";
             {
                 throw new SixnetException($"Redis database {server.Database} is invalid");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisDatabase = conn.GetDatabase(dbIndex);
                 var redisKeyType = redisDatabase.KeyType(parameter.Key.GetActualKey());
-                var cacheKeyType = RedisManager.GetCacheKeyType(redisKeyType.ToString());
+                var cacheKeyType = SixnetRedisManager.GetCacheKeyType(redisKeyType.ToString());
                 var keyItem = new CacheEntry()
                 {
                     Key = parameter.Key.GetActualKey(),
@@ -5351,7 +5349,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(GetServerConfigurationParameter)}.{nameof(GetServerConfigurationParameter.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var config = new RedisServerConfiguration();
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
@@ -5571,7 +5569,7 @@ return pv";
             {
                 throw new ArgumentNullException($"{nameof(SaveServerConfigurationParameter)}.{nameof(SaveServerConfigurationParameter.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 if (!string.IsNullOrWhiteSpace(config.Host))
@@ -5714,7 +5712,7 @@ then
     for ki={1 + keyOffset},{keyCount + keyOffset}
     do
         ckey=KEYS[ki]
-        exkey=ckey..'{RedisManager.ExpirationKeySuffix}' 
+        exkey=ckey..'{SixnetRedisManager.ExpirationKeySuffix}' 
         local ct=redis.call('GET',exkey)
         if ct 
         then
@@ -5729,7 +5727,7 @@ else
     for ki={1 + keyOffset},{keyCount + keyOffset}
     do
         ckey=KEYS[ki]
-        exkey=ckey..'{RedisManager.ExpirationKeySuffix}'
+        exkey=ckey..'{SixnetRedisManager.ExpirationKeySuffix}'
         local nt=tonumber({Arg(newTimeArgIndex)})
         if nt>0
         then
@@ -5753,7 +5751,7 @@ end";
         /// <returns></returns>
         static string GetExpirationKey(string cacheKey)
         {
-            return $"{cacheKey}{RedisManager.ExpirationKeySuffix}";
+            return $"{cacheKey}{SixnetRedisManager.ExpirationKeySuffix}";
         }
 
         /// <summary>
@@ -5822,7 +5820,7 @@ end";
 
         RedisResult ExecuteStatement(CacheServer server, RedisDatabase database, RedisStatement statement)
         {
-            return ExecuteStatement(server, database, statement);
+            return database.RemoteDatabase.ScriptEvaluate(statement.Script, statement.Keys, statement.Parameters, statement.Flags);
         }
 
         #endregion

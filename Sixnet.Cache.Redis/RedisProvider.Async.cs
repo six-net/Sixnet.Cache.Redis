@@ -49,7 +49,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringSetRangeParameter)}.{nameof(StringSetRangeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetRangeStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringSetRangeResult()
@@ -80,7 +80,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringSetBitParameter)}.{nameof(StringSetBitParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetBitStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringSetBitResult()
@@ -109,7 +109,7 @@ namespace Sixnet.Cache.Redis
             {
                 return GetNoValueResponse<StringSetResult>(server);
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringSetResult()
@@ -137,7 +137,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringLengthParameter)}.{nameof(StringLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringLengthStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringLengthResult()
@@ -168,7 +168,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringIncrementParameter)}.{nameof(StringIncrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringIncrementStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringIncrementResult()
@@ -198,7 +198,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringGetWithExpiryParameter)}.{nameof(StringGetWithExpiryParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetWithExpiryStatement(parameter);
             var result = (RedisValue[])(await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false));
             return new StringGetWithExpiryResult()
@@ -227,7 +227,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringGetSetParameter)}.{nameof(StringGetSetParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetSetStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringGetSetResult()
@@ -258,7 +258,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringGetRangeParameter)}.{nameof(StringGetRangeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetRangeStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringGetRangeResult()
@@ -288,7 +288,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringGetBitParameter)}.{nameof(StringGetBitParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetBitStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringGetBitResult()
@@ -317,7 +317,7 @@ namespace Sixnet.Cache.Redis
             {
                 return GetNoKeyResponse<StringGetResult>(server);
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetStatement(parameter);
             var result = (RedisValue[])(await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false));
             return new StringGetResult()
@@ -357,7 +357,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringDecrementParameter)}.{nameof(StringDecrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringDecrementStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringDecrementResult()
@@ -391,7 +391,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringBitPositionParameter)}.{nameof(StringBitPositionParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitPositionStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringBitPositionResult()
@@ -428,7 +428,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringBitOperationParameter)}.{nameof(StringBitOperationParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitOperationStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringBitOperationResult()
@@ -461,7 +461,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringBitCountParameter)}.{nameof(StringBitCountParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitCountStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringBitCountResult()
@@ -491,7 +491,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(StringAppendParameter)}.{nameof(StringAppendParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringAppendStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new StringAppendResult()
@@ -529,7 +529,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListTrimParameter)}.{nameof(ListTrimParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListTrimStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListTrimResult()
@@ -557,7 +557,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListSetByIndexParameter)}.{nameof(ListSetByIndexParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListSetByIndexStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListSetByIndexResult()
@@ -593,7 +593,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Values)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPushStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListRightPushResult()
@@ -627,7 +627,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListRightPopLeftPushParameter)}.{nameof(ListRightPopLeftPushParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPopLeftPushStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListRightPopLeftPushResult()
@@ -655,7 +655,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListRightPopParameter)}.{nameof(ListRightPopParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPopStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListRightPopResult()
@@ -687,7 +687,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListRemoveParameter)}.{nameof(ListRemoveParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRemoveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListRemoveResult()
@@ -721,7 +721,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListRangeParameter)}.{nameof(ListRangeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRangeStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListRangeResult()
@@ -750,7 +750,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListLengthParameter)}.{nameof(ListLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListLengthResult()
@@ -783,7 +783,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Values)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLeftPushStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListLeftPushResult()
@@ -811,7 +811,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListLeftPopParameter)}.{nameof(ListLeftPopParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLeftPopStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListLeftPopResult()
@@ -841,7 +841,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListInsertBeforeParameter)}.{nameof(ListInsertBeforeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListInsertBeforeStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListInsertBeforeResult()
@@ -871,7 +871,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListInsertAfterParameter)}.{nameof(ListInsertAfterParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListInsertAfterStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListInsertAfterResult()
@@ -902,7 +902,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ListInsertAfterParameter)}.{nameof(ListInsertAfterParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListGetByIndexStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ListGetByIndexResult()
@@ -934,7 +934,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashValuesParameter)}.{nameof(HashValuesParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashValuesStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashValuesResult()
@@ -967,7 +967,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashSetParameter)}.{nameof(HashSetParameter.Items)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashSetStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashSetResult()
@@ -994,7 +994,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashLengthParameter)}.{nameof(HashLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashLengthResult()
@@ -1022,7 +1022,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashKeysParameter)}.{nameof(HashKeysParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashKeysStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashKeysResult()
@@ -1057,7 +1057,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashIncrementParameter)}.{nameof(HashIncrementParameter.IncrementValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var cacheKey = parameter.Key.GetActualKey();
             var newValue = parameter.IncrementValue;
             var dataType = parameter.IncrementValue.GetType();
@@ -1119,7 +1119,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashGetParameter)}.{nameof(HashGetParameter.HashField)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashGetStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashGetResult()
@@ -1147,7 +1147,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashGetAllParameter)}.{nameof(HashGetAllParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashGetAllStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             Dictionary<string, dynamic> values = new Dictionary<string, dynamic>(result.Length / 2);
@@ -1184,7 +1184,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashExistsParameter)}.{nameof(HashExistsParameter.HashField)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashExistStatement(parameter);
             var result = (int)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashExistsResult()
@@ -1217,7 +1217,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashDeleteParameter)}.{nameof(HashDeleteParameter.HashFields)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashDeleteStatement(parameter);
             var result = (int)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new HashDeleteResult()
@@ -1250,7 +1250,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashDecrementParameter)}.{nameof(HashDecrementParameter.DecrementValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var dataType = parameter.DecrementValue.GetType();
             var typeCode = Type.GetTypeCode(dataType);
             dynamic newValue = parameter.DecrementValue;
@@ -1308,7 +1308,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(HashScanParameter)}.{nameof(HashScanParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashScanStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             long newCursor = 0;
@@ -1357,11 +1357,11 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.Key)}");
             }
-            if (parameter.RemoveMembers.IsNullOrEmpty())
+            if (parameter.Members.IsNullOrEmpty())
             {
-                throw new ArgumentException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.RemoveMembers)}");
+                throw new ArgumentException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.Members)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRemoveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetRemoveResult()
@@ -1392,7 +1392,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetRandomMembersParameter)}.{nameof(SetRandomMembersParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRandomMembersStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetRandomMembersResult()
@@ -1420,7 +1420,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetRandomMemberParameter)}.{nameof(SetRandomMemberParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRandomMemberStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetRandomMemberResult()
@@ -1448,7 +1448,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetPopParameter)}.{nameof(SetPopParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetPopStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetPopResult()
@@ -1487,7 +1487,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetMoveParameter)}.{nameof(SetMoveParameter.MoveMember)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetMoveStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetMoveResult()
@@ -1514,7 +1514,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetMembersParameter)}.{nameof(SetMembersParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetMembersStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetMembersResult()
@@ -1542,7 +1542,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetLengthParameter)}.{nameof(SetLengthParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetLengthResult()
@@ -1574,7 +1574,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetContainsParameter)}.{nameof(SetContainsParameter.Member)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetContainsStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetContainsResult()
@@ -1603,7 +1603,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetCombineParameter)}.{nameof(SetCombineParameter.Keys)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetCombineStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetCombineResult()
@@ -1636,7 +1636,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SetCombineAndStoreParameter)}.{nameof(SetCombineAndStoreParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetCombineAndStoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetCombineAndStoreResult()
@@ -1670,7 +1670,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentException($"{nameof(SetAddParameter)}.{nameof(SetAddParameter.Members)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetAddStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SetAddResult()
@@ -1706,7 +1706,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetScoreParameter)}.{nameof(SortedSetScoreParameter.Member)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetScoreStatement(parameter);
             var result = (double?)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetScoreResult()
@@ -1744,7 +1744,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MaxValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByValueStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRemoveRangeByValueResult()
@@ -1773,7 +1773,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByScoreParameter)}.{nameof(SortedSetRemoveRangeByScoreParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByScoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRemoveRangeByScoreResult()
@@ -1806,7 +1806,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByRankParameter)}.{nameof(SortedSetRemoveRangeByRankParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByRankStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRemoveRangeByRankResult()
@@ -1839,7 +1839,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentException($"{nameof(SortedSetRemoveParameter)}.{nameof(SortedSetRemoveParameter.RemoveMembers)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRemoveResult()
@@ -1873,7 +1873,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRankParameter)}.{nameof(SortedSetRankParameter.Member)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRankStatement(parameter);
             var result = (long?)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRankResult()
@@ -1911,7 +1911,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MaxValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByValueStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRangeByValueResult()
@@ -1943,7 +1943,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreWithScoresParameter)}.{nameof(SortedSetRangeByScoreWithScoresParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByScoreWithScoresStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
@@ -1986,7 +1986,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreParameter)}.{nameof(SortedSetRangeByScoreParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByScoreStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRangeByScoreResult()
@@ -2020,7 +2020,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByRankWithScoresParameter)}.{nameof(SortedSetRangeByRankWithScoresParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByRankWithScoresStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
@@ -2065,7 +2065,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetRangeByRankParameter)}.{nameof(SortedSetRangeByRankParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByRankStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetRangeByRankResult()
@@ -2103,7 +2103,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.MaxValue)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetLengthByValueStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetLengthByValueResult()
@@ -2132,7 +2132,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetLengthResult()
@@ -2162,7 +2162,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetIncrementParameter)}.{nameof(SortedSetIncrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetIncrementStatement(parameter);
             var result = (double)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetIncrementResult()
@@ -2192,7 +2192,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetDecrementParameter)}.{nameof(SortedSetDecrementParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetDecrementStatement(parameter);
             var result = (double)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetDecrementResult()
@@ -2226,7 +2226,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortedSetCombineAndStoreParameter)}.{nameof(SortedSetCombineAndStoreParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetCombineAndStoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetCombineAndStoreResult()
@@ -2261,7 +2261,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentException($"{nameof(SortedSetAddParameter)}.{nameof(SortedSetAddParameter.Members)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetAddStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortedSetAddResult()
@@ -2300,7 +2300,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortParameter)}.{nameof(SortParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortResult()
@@ -2339,7 +2339,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SortAndStoreParameter)}.{nameof(SortAndStoreParameter.DestinationKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortAndStoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new SortAndStoreResult()
@@ -2372,13 +2372,13 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(TypeParameter)}.{nameof(TypeParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyTypeStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new TypeResult()
             {
                 Success = true,
-                KeyType = RedisManager.GetCacheKeyType(result),
+                KeyType = SixnetRedisManager.GetCacheKeyType(result),
                 CacheServer = server,
                 Database = database
             };
@@ -2402,7 +2402,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(TimeToLiveParameter)}.{nameof(TimeToLiveParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyTimeToLiveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new TimeToLiveResult()
@@ -2434,7 +2434,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(RestoreParameter)}.{nameof(RestoreParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRestoreStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new RestoreResult()
@@ -2466,7 +2466,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(RenameParameter)}.{nameof(RenameParameter.NewKey)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRenameStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new RenameResult()
@@ -2489,7 +2489,7 @@ namespace Sixnet.Cache.Redis
         /// <returns>key random result</returns>
         public async Task<RandomResult> KeyRandomAsync(CacheServer server, RandomParameter parameter)
         {
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRandomStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new RandomResult()
@@ -2518,7 +2518,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(PersistParameter)}.{nameof(PersistParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyPersistStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new PersistResult()
@@ -2552,7 +2552,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentException($"{nameof(MoveParameter)}.{nameof(MoveParameter.DatabaseName)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyMoveStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new MoveResult()
@@ -2585,7 +2585,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(MigrateKeyParameter)}.{nameof(MigrateKeyParameter.Destination)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyMigrateStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new MigrateKeyResult()
@@ -2614,7 +2614,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ExpireParameter)}.{nameof(ExpireParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyExpireStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ExpireResult()
@@ -2643,7 +2643,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(DumpParameter)}.{nameof(DumpParameter.Key)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyDumpStatement(parameter);
             var result = (byte[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new DumpResult()
@@ -2671,7 +2671,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(DeleteParameter)}.{nameof(DeleteParameter.Keys)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyDeleteStatement(parameter);
             var count = await database.RemoteDatabase.KeyDeleteAsync(statement.Keys, statement.Flags).ConfigureAwait(false);
             return new DeleteResult()
@@ -2699,7 +2699,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(ExistParameter)}.{nameof(ExistParameter.Keys)}");
             }
-            var database = RedisManager.GetDatabase(server);
+            var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyExistStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             return new ExistResult()
@@ -2735,7 +2735,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(GetAllDataBaseParameter)}.{nameof(GetAllDataBaseParameter.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var response = new GetAllDataBaseResult()
                 {
@@ -2804,7 +2804,7 @@ namespace Sixnet.Cache.Redis
                         break;
                 }
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 var keys = redisServer.Keys(dbIndex, searchString, query.PageSize, 0, (query.Page - 1) * query.PageSize, CommandFlags.None);
@@ -2846,8 +2846,8 @@ namespace Sixnet.Cache.Redis
             {
                 throw new SixnetException($"Redis database {server.Database} is invalid");
             }
-            var cmdFlags = RedisManager.GetCommandFlags(parameter.CommandFlags);
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 await redisServer.FlushDatabaseAsync(dbIndex, cmdFlags).ConfigureAwait(false);
@@ -2889,11 +2889,11 @@ namespace Sixnet.Cache.Redis
             {
                 throw new SixnetException($"Redis database {server.Database} is invalid");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisDatabase = conn.GetDatabase(dbIndex);
                 var redisKeyType = redisDatabase.KeyTypeAsync(parameter.Key.GetActualKey()).ConfigureAwait(false);
-                var cacheKeyType = RedisManager.GetCacheKeyType(redisKeyType.ToString());
+                var cacheKeyType = SixnetRedisManager.GetCacheKeyType(redisKeyType.ToString());
                 var keyItem = new CacheEntry()
                 {
                     Key = parameter.Key.GetActualKey(),
@@ -2962,7 +2962,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(GetServerConfigurationParameter)}.{nameof(GetServerConfigurationParameter.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var config = new RedisServerConfiguration();
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
@@ -3182,7 +3182,7 @@ namespace Sixnet.Cache.Redis
             {
                 throw new ArgumentNullException($"{nameof(SaveServerConfigurationParameter)}.{nameof(SaveServerConfigurationParameter.EndPoint)}");
             }
-            using (var conn = RedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 if (!string.IsNullOrWhiteSpace(config.Host))
