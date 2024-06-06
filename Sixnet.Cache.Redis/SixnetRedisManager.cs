@@ -372,8 +372,23 @@ namespace Sixnet.Cache.Redis
             return operationType switch
             {
                 CombineOperation.Difference => "SDIFF",
-                CombineOperation.Intersect => "SUNION",
+                CombineOperation.Intersect => "SINTER",
                 _ => "SUNION",
+            };
+        }
+
+        /// <summary>
+        /// Get set combine store command
+        /// </summary>
+        /// <param name="setOperationType"></param>
+        /// <returns></returns>
+        internal static string GetSetCombineStoreCommand(CombineOperation operationType)
+        {
+            return operationType switch
+            {
+                CombineOperation.Difference => "SDIFFSTORE",
+                CombineOperation.Intersect => "SINTERSTORE",
+                _ => "SUNIONSTORE",
             };
         }
 

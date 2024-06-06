@@ -3067,7 +3067,7 @@ return pv";
                 keys[i + 1] = parameter.SourceKeys[i].GetActualKey();
                 keyParameters.Add($"{Keys(i + 2)}");
             }
-            var script = $@"local pv=redis.call('{SixnetRedisManager.GetSetCombineCommand(parameter.CombineOperation)}STORE',{string.Join(",", keyParameters)})
+            var script = $@"local pv=redis.call('{SixnetRedisManager.GetSetCombineStoreCommand(parameter.CombineOperation)}STORE',{string.Join(",", keyParameters)})
 {GetRefreshExpirationScript(-2, 1, keyCount: keys.Length - 1)}
 {GetRefreshExpirationScript(1)}
 return pv";
