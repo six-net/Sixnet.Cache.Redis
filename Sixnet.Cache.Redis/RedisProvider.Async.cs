@@ -2713,6 +2713,24 @@ namespace Sixnet.Cache.Redis
 
         #endregion
 
+        #region KeyScan
+
+        /// <summary>
+        /// Key scan
+        /// </summary>
+        /// <param name="server">server</param>
+        /// <param name="parameter">parameter</param>
+        /// <returns></returns>
+        public Task<ScanResult> KeyScanAsync(CacheServer server, ScanParameter parameter)
+        {
+            var database = SixnetRedisManager.GetDatabase(server);
+            var scanResult = database.RemoteDatabase.Execute("SCAN", parameter.Cursor, "MATCH", parameter.Pattern);
+
+            return Task.FromResult(new ScanResult());
+        }
+
+        #endregion
+
         #endregion
 
         #region Server
@@ -2798,6 +2816,9 @@ namespace Sixnet.Cache.Redis
                         break;
                     case KeyMatchPattern.EndWith:
                         searchString = "*" + query.MateKey;
+                        break;
+                    case KeyMatchPattern.Custom:
+                        searchString = query.MateKey;
                         break;
                     default:
                         searchString = string.Format("*{0}*", query.MateKey);

@@ -223,7 +223,7 @@ namespace Sixnet.Cache.Redis
                 SixnetLogger.LogError<RedisProvider>(SixnetLogEvents.Cache.ConnectionCacheServerError, ex, ex.Message);
                 if (!ignoreConnectionException)
                 {
-                    throw ex;
+                    throw;
                 }
             }
             return null;

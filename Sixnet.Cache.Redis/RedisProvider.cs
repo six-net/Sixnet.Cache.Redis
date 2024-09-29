@@ -5100,6 +5100,27 @@ return pv";
 
         #endregion
 
+        #region KeyScan
+
+        /// <summary>
+        /// Key scan
+        /// </summary>
+        /// <param name="server">server</param>
+        /// <param name="parameter">parameter</param>
+        /// <returns></returns>
+        public ScanResult KeyScan(CacheServer server, ScanParameter parameter)
+        {
+            var database = SixnetRedisManager.GetDatabase(server);
+            var scanResults = (RedisResult[])database.RemoteDatabase.Execute("SCAN", parameter.Cursor, "MATCH", parameter.Pattern);
+            return new ScanResult()
+            {
+                Cursor = (long)scanResults[0],
+                Keys = ((string[])scanResults[1])?.Select(c => { CacheKey key = ConstantCacheKey.Create(c); return key; })?.ToList() ?? new List<CacheKey>(0)
+            };
+        }
+
+        #endregion
+
         #endregion
 
         #region Server
