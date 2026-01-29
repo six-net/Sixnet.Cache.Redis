@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Sixnet.Cache.Redis
 {
-    public class RedisDatabase : CacheDatabase
+    public class SixnetRedisDatabase : SixnetCacheDatabase
     {
         /// <summary>
         /// Gets or sets the redis database

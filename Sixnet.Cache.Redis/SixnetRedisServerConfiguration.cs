@@ -9,7 +9,7 @@ namespace Sixnet.Cache.Redis
     /// <summary>
     /// Redis server configuration
     /// </summary>
-    public class RedisServerConfiguration : CacheServerConfiguration
+    public class SixnetRedisServerConfiguration : SixnetCacheServerConfiguration
     {
         /// <summary>
         /// Gets or sets whether daemonize
@@ -78,7 +78,7 @@ namespace Sixnet.Cache.Redis
         /// <summary>
         /// Gets or sets save configuration
         /// </summary>
-        public List<DataChangeSaveParameter> SaveConfiguration
+        public List<SixnetDataChangeSaveParameter> SaveConfiguration
         {
             get; set;
         }

@@ -14,15 +14,21 @@
     <copyright>Copyright © DingBin.Li</copyright>
     <tags>.NET,Sixnet,Redis</tags>
     <dependencies>
-      <group targetFramework=".NETStandard2.1">
-        <dependency id="StackExchange.Redis" version="2.6.66" />
-        <dependency id="Sixnet" version="2.1.0" />
+      <group targetFramework="net6.0">
+        <dependency id="StackExchange.Redis" version="2.10.1" />
+        <dependency id="Sixnet" version="2.1.1" />
+      </group>
+	  <group targetFramework="net8.0">
+        <dependency id="StackExchange.Redis" version="2.10.1" />
+        <dependency id="Sixnet" version="2.1.1" />
       </group>
     </dependencies>
   </metadata>
   <files>
-    <file src="Sixnet.Cache.Redis\bin\$configuration$\netstandard2.1\Sixnet.Cache.Redis.dll" target="lib\netstandard2.1" />
-	<file src="Sixnet.Cache.Redis\bin\$configuration$\netstandard2.1\Sixnet.Cache.Redis.pdb" target="lib\netstandard2.1" />
+    <file src="Sixnet.Cache.Redis\bin\$configuration$\net6.0\Sixnet.Cache.Redis.dll" target="lib\net6.0" />
+	<file src="Sixnet.Cache.Redis\bin\$configuration$\net6.0\Sixnet.Cache.Redis.pdb" target="lib\net6.0" />
+    <file src="Sixnet.Cache.Redis\bin\$configuration$\net8.0\Sixnet.Cache.Redis.dll" target="lib\net8.0" />
+	<file src="Sixnet.Cache.Redis\bin\$configuration$\net8.0\Sixnet.Cache.Redis.pdb" target="lib\net8.0" />
 	<file src=".\nugeticon.png" target="images\" />
   </files>
 </package>

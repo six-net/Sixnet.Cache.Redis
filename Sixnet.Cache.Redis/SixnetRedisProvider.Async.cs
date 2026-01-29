@@ -27,7 +27,7 @@ namespace Sixnet.Cache.Redis
     /// <summary>
     /// Implements ICacheProvider by Redis
     /// </summary>
-    public partial class RedisProvider
+    public partial class SixnetRedisProvider
     {
         #region String
 
@@ -43,16 +43,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String set range parameter</param>
         /// <returns>Return string set range result</returns>
-        public async Task<StringSetRangeResult> StringSetRangeAsync(CacheServer server, StringSetRangeParameter parameter)
+        public async Task<SixnetStringSetRangeResult> StringSetRangeAsync(SixnetCacheServer server, SixnetStringSetRangeParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringSetRangeParameter)}.{nameof(StringSetRangeParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringSetRangeParameter)}.{nameof(SixnetStringSetRangeParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetRangeStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringSetRangeResult()
+            return new SixnetStringSetRangeResult()
             {
                 Success = true,
                 CacheServer = server,
@@ -74,16 +74,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String set bit parameter</param>
         /// <returns>Return string set bit result</returns>
-        public async Task<StringSetBitResult> StringSetBitAsync(CacheServer server, StringSetBitParameter parameter)
+        public async Task<SixnetStringSetBitResult> StringSetBitAsync(SixnetCacheServer server, SixnetStringSetBitParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringSetBitParameter)}.{nameof(StringSetBitParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringSetBitParameter)}.{nameof(SixnetStringSetBitParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetBitStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringSetBitResult()
+            return new SixnetStringSetBitResult()
             {
                 Success = true,
                 OldBitValue = (bool)result,
@@ -103,21 +103,21 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String set parameter</param>
         /// <returns>Return string set result</returns>
-        public async Task<StringSetResult> StringSetAsync(CacheServer server, StringSetParameter parameter)
+        public async Task<SixnetStringSetResult> StringSetAsync(SixnetCacheServer server, SixnetStringSetParameter parameter)
         {
             if (parameter?.Items.IsNullOrEmpty() ?? true)
             {
-                return GetNoValueResponse<StringSetResult>(server);
+                return GetNoValueResponse<SixnetStringSetResult>(server);
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringSetStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringSetResult()
+            return new SixnetStringSetResult()
             {
                 CacheServer = server,
                 Database = database,
                 Success = true,
-                Results = ((RedisValue[])result)?.Select(c => new StringEntrySetResult() { SetSuccess = true, Key = c }).ToList()
+                Results = ((RedisValue[])result)?.Select(c => new SixnetStringEntrySetResult() { SetSuccess = true, Key = c }).ToList()
             };
         }
 
@@ -131,16 +131,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String length parameter</param>
         /// <returns>Return string length result</returns>
-        public async Task<StringLengthResult> StringLengthAsync(CacheServer server, StringLengthParameter parameter)
+        public async Task<SixnetStringLengthResult> StringLengthAsync(SixnetCacheServer server, SixnetStringLengthParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringLengthParameter)}.{nameof(StringLengthParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringLengthParameter)}.{nameof(SixnetStringLengthParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringLengthStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringLengthResult()
+            return new SixnetStringLengthResult()
             {
                 Success = true,
                 Length = (long)result,
@@ -162,16 +162,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String increment parameter</param>
         /// <returns>Return string increment result</returns>
-        public async Task<StringIncrementResult> StringIncrementAsync(CacheServer server, StringIncrementParameter parameter)
+        public async Task<SixnetStringIncrementResult> StringIncrementAsync(SixnetCacheServer server, SixnetStringIncrementParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringIncrementParameter)}.{nameof(StringIncrementParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringIncrementParameter)}.{nameof(SixnetStringIncrementParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringIncrementStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringIncrementResult()
+            return new SixnetStringIncrementResult()
             {
                 Success = true,
                 NewValue = (long)result,
@@ -192,16 +192,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String get with expiry ption</param>
         /// <returns>Return string get with expiry result</returns>
-        public async Task<StringGetWithExpiryResult> StringGetWithExpiryAsync(CacheServer server, StringGetWithExpiryParameter parameter)
+        public async Task<SixnetStringGetWithExpiryResult> StringGetWithExpiryAsync(SixnetCacheServer server, SixnetStringGetWithExpiryParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringGetWithExpiryParameter)}.{nameof(StringGetWithExpiryParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringGetWithExpiryParameter)}.{nameof(SixnetStringGetWithExpiryParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetWithExpiryStatement(parameter);
             var result = (RedisValue[])(await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false));
-            return new StringGetWithExpiryResult()
+            return new SixnetStringGetWithExpiryResult()
             {
                 Success = true,
                 Value = result[0],
@@ -221,16 +221,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String get set parameter</param>
         /// <returns>Return string get set result</returns>
-        public async Task<StringGetSetResult> StringGetSetAsync(CacheServer server, StringGetSetParameter parameter)
+        public async Task<SixnetStringGetSetResult> StringGetSetAsync(SixnetCacheServer server, SixnetStringGetSetParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringGetSetParameter)}.{nameof(StringGetSetParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringGetSetParameter)}.{nameof(SixnetStringGetSetParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetSetStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringGetSetResult()
+            return new SixnetStringGetSetResult()
             {
                 Success = true,
                 OldValue = (string)result,
@@ -252,16 +252,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String get range parameter</param>
         /// <returns>Return string get range result</returns>
-        public async Task<StringGetRangeResult> StringGetRangeAsync(CacheServer server, StringGetRangeParameter parameter)
+        public async Task<SixnetStringGetRangeResult> StringGetRangeAsync(SixnetCacheServer server, SixnetStringGetRangeParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringGetRangeParameter)}.{nameof(StringGetRangeParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringGetRangeParameter)}.{nameof(SixnetStringGetRangeParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetRangeStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringGetRangeResult()
+            return new SixnetStringGetRangeResult()
             {
                 Success = true,
                 Value = (string)result,
@@ -282,16 +282,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String get bit parameter</param>
         /// <returns>Return string get bit result</returns>
-        public async Task<StringGetBitResult> StringGetBitAsync(CacheServer server, StringGetBitParameter parameter)
+        public async Task<SixnetStringGetBitResult> StringGetBitAsync(SixnetCacheServer server, SixnetStringGetBitParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringGetBitParameter)}.{nameof(StringGetBitParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringGetBitParameter)}.{nameof(SixnetStringGetBitParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetBitStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringGetBitResult()
+            return new SixnetStringGetBitResult()
             {
                 Success = true,
                 Bit = (bool)result,
@@ -311,23 +311,23 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String get parameter</param>
         /// <returns>Return string get result</returns>
-        public async Task<StringGetResult> StringGetAsync(CacheServer server, StringGetParameter parameter)
+        public async Task<SixnetStringGetResult> StringGetAsync(SixnetCacheServer server, SixnetStringGetParameter parameter)
         {
             if (parameter?.Keys.IsNullOrEmpty() ?? true)
             {
-                return GetNoKeyResponse<StringGetResult>(server);
+                return GetNoKeyResponse<SixnetStringGetResult>(server);
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringGetStatement(parameter);
             var result = (RedisValue[])(await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false));
-            return new StringGetResult()
+            return new SixnetStringGetResult()
             {
                 Success = true,
                 Values = result.Select(c =>
                 {
                     string stringValue = c;
                     var valueArray = stringValue.LSplit("$::$");
-                    return new CacheEntry()
+                    return new SixnetCacheEntry()
                     {
                         Key = valueArray[0],
                         Value = valueArray.Length > 1 ? valueArray[1] : null
@@ -351,16 +351,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String decrement parameter</param>
         /// <returns>Return string decrement result</returns>
-        public async Task<StringDecrementResult> StringDecrementAsync(CacheServer server, StringDecrementParameter parameter)
+        public async Task<SixnetStringDecrementResult> StringDecrementAsync(SixnetCacheServer server, SixnetStringDecrementParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringDecrementParameter)}.{nameof(StringDecrementParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringDecrementParameter)}.{nameof(SixnetStringDecrementParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringDecrementStatement(parameter);
             var result = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringDecrementResult()
+            return new SixnetStringDecrementResult()
             {
                 Success = true,
                 NewValue = (long)result,
@@ -385,16 +385,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String bit position parameter</param>
         /// <returns>Return string bit position result</returns>
-        public async Task<StringBitPositionResult> StringBitPositionAsync(CacheServer server, StringBitPositionParameter parameter)
+        public async Task<SixnetStringBitPositionResult> StringBitPositionAsync(SixnetCacheServer server, SixnetStringBitPositionParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringBitPositionParameter)}.{nameof(StringBitPositionParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringBitPositionParameter)}.{nameof(SixnetStringBitPositionParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitPositionStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringBitPositionResult()
+            return new SixnetStringBitPositionResult()
             {
                 Success = true,
                 Position = result,
@@ -418,20 +418,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String bit operation parameter</param>
         /// <returns>Return string bit operation result</returns>
-        public async Task<StringBitOperationResult> StringBitOperationAsync(CacheServer server, StringBitOperationParameter parameter)
+        public async Task<SixnetStringBitOperationResult> StringBitOperationAsync(SixnetCacheServer server, SixnetStringBitOperationParameter parameter)
         {
             if (parameter?.Keys.IsNullOrEmpty() ?? true)
             {
-                return GetNoKeyResponse<StringBitOperationResult>(server);
+                return GetNoKeyResponse<SixnetStringBitOperationResult>(server);
             }
             if (string.IsNullOrWhiteSpace(parameter?.DestinationKey))
             {
-                throw new ArgumentNullException($"{nameof(StringBitOperationParameter)}.{nameof(StringBitOperationParameter.DestinationKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringBitOperationParameter)}.{nameof(SixnetStringBitOperationParameter.DestinationKey)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitOperationStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringBitOperationResult()
+            return new SixnetStringBitOperationResult()
             {
                 Success = true,
                 DestinationValueLength = result,
@@ -455,16 +455,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String bit count parameter</param>
         /// <returns>Return string bit count result</returns>
-        public async Task<StringBitCountResult> StringBitCountAsync(CacheServer server, StringBitCountParameter parameter)
+        public async Task<SixnetStringBitCountResult> StringBitCountAsync(SixnetCacheServer server, SixnetStringBitCountParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringBitCountParameter)}.{nameof(StringBitCountParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringBitCountParameter)}.{nameof(SixnetStringBitCountParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringBitCountStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringBitCountResult()
+            return new SixnetStringBitCountResult()
             {
                 Success = true,
                 BitNum = result,
@@ -485,16 +485,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">String append parameter</param>
         /// <returns>Return string append result</returns>
-        public async Task<StringAppendResult> StringAppendAsync(CacheServer server, StringAppendParameter parameter)
+        public async Task<SixnetStringAppendResult> StringAppendAsync(SixnetCacheServer server, SixnetStringAppendParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(StringAppendParameter)}.{nameof(StringAppendParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetStringAppendParameter)}.{nameof(SixnetStringAppendParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetStringAppendStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new StringAppendResult()
+            return new SixnetStringAppendResult()
             {
                 Success = true,
                 NewValueLength = result,
@@ -523,16 +523,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">List trim parameter</param>
         /// <returns>Return list trim result</returns>
-        public async Task<ListTrimResult> ListTrimAsync(CacheServer server, ListTrimParameter parameter)
+        public async Task<SixnetListTrimResult> ListTrimAsync(SixnetCacheServer server, SixnetListTrimParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListTrimParameter)}.{nameof(ListTrimParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListTrimParameter)}.{nameof(SixnetListTrimParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListTrimStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListTrimResult()
+            return new SixnetListTrimResult()
             {
                 Success = true,
                 CacheServer = server,
@@ -551,16 +551,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List set by index parameter</param>
         /// <returns>Return list set by index result</returns>
-        public async Task<ListSetByIndexResult> ListSetByIndexAsync(CacheServer server, ListSetByIndexParameter parameter)
+        public async Task<SixnetListSetByIndexResult> ListSetByIndexAsync(SixnetCacheServer server, SixnetListSetByIndexParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListSetByIndexParameter)}.{nameof(ListSetByIndexParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListSetByIndexParameter)}.{nameof(SixnetListSetByIndexParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListSetByIndexStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListSetByIndexResult()
+            return new SixnetListSetByIndexResult()
             {
                 Success = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase),
                 CacheServer = server,
@@ -583,20 +583,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List right push parameter</param>
         /// <returns>Return list right push</returns>
-        public async Task<ListRightPushResult> ListRightPushAsync(CacheServer server, ListRightPushParameter parameter)
+        public async Task<SixnetListRightPushResult> ListRightPushAsync(SixnetCacheServer server, SixnetListRightPushParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListRightPushParameter)}.{nameof(SixnetListRightPushParameter.Key)}");
             }
             if (parameter?.Values.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Values)}");
+                throw new ArgumentException($"{nameof(SixnetListRightPushParameter)}.{nameof(SixnetListRightPushParameter.Values)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPushStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListRightPushResult()
+            return new SixnetListRightPushResult()
             {
                 Success = true,
                 NewListLength = result,
@@ -617,20 +617,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List right pop left push parameter</param>
         /// <returns>Return list right pop left result</returns>
-        public async Task<ListRightPopLeftPushResult> ListRightPopLeftPushAsync(CacheServer server, ListRightPopLeftPushParameter parameter)
+        public async Task<SixnetListRightPopLeftPushResult> ListRightPopLeftPushAsync(SixnetCacheServer server, SixnetListRightPopLeftPushParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.SourceKey))
             {
-                throw new ArgumentNullException($"{nameof(ListRightPopLeftPushParameter)}.{nameof(ListRightPopLeftPushParameter.SourceKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetListRightPopLeftPushParameter)}.{nameof(SixnetListRightPopLeftPushParameter.SourceKey)}");
             }
             if (string.IsNullOrWhiteSpace(parameter?.DestinationKey))
             {
-                throw new ArgumentNullException($"{nameof(ListRightPopLeftPushParameter)}.{nameof(ListRightPopLeftPushParameter.DestinationKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetListRightPopLeftPushParameter)}.{nameof(SixnetListRightPopLeftPushParameter.DestinationKey)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPopLeftPushStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListRightPopLeftPushResult()
+            return new SixnetListRightPopLeftPushResult()
             {
                 Success = true,
                 PopValue = result,
@@ -649,16 +649,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List right pop parameter</param>
         /// <returns>Return list right pop result</returns>
-        public async Task<ListRightPopResult> ListRightPopAsync(CacheServer server, ListRightPopParameter parameter)
+        public async Task<SixnetListRightPopResult> ListRightPopAsync(SixnetCacheServer server, SixnetListRightPopParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListRightPopParameter)}.{nameof(ListRightPopParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListRightPopParameter)}.{nameof(SixnetListRightPopParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRightPopStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListRightPopResult()
+            return new SixnetListRightPopResult()
             {
                 Success = true,
                 PopValue = result,
@@ -681,16 +681,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List remove parameter</param>
         /// <returns>Return list remove result</returns>
-        public async Task<ListRemoveResult> ListRemoveAsync(CacheServer server, ListRemoveParameter parameter)
+        public async Task<SixnetListRemoveResult> ListRemoveAsync(SixnetCacheServer server, SixnetListRemoveParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListRemoveParameter)}.{nameof(ListRemoveParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListRemoveParameter)}.{nameof(SixnetListRemoveParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRemoveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListRemoveResult()
+            return new SixnetListRemoveResult()
             {
                 Success = true,
                 RemoveCount = result,
@@ -715,16 +715,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>list range result</returns>
-        public async Task<ListRangeResult> ListRangeAsync(CacheServer server, ListRangeParameter parameter)
+        public async Task<SixnetListRangeResult> ListRangeAsync(SixnetCacheServer server, SixnetListRangeParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListRangeParameter)}.{nameof(ListRangeParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListRangeParameter)}.{nameof(SixnetListRangeParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListRangeStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListRangeResult()
+            return new SixnetListRangeResult()
             {
                 Success = true,
                 Values = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -744,16 +744,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>list length result</returns>
-        public async Task<ListLengthResult> ListLengthAsync(CacheServer server, ListLengthParameter parameter)
+        public async Task<SixnetListLengthResult> ListLengthAsync(SixnetCacheServer server, SixnetListLengthParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListLengthParameter)}.{nameof(ListLengthParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListLengthParameter)}.{nameof(SixnetListLengthParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListLengthResult()
+            return new SixnetListLengthResult()
             {
                 Success = true,
                 Length = result,
@@ -773,20 +773,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List left push parameter</param>
         /// <returns>Return list left push result</returns>
-        public async Task<ListLeftPushResult> ListLeftPushAsync(CacheServer server, ListLeftPushParameter parameter)
+        public async Task<SixnetListLeftPushResult> ListLeftPushAsync(SixnetCacheServer server, SixnetListLeftPushParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListLeftPushParameter)}.{nameof(ListLeftPushParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListLeftPushParameter)}.{nameof(SixnetListLeftPushParameter.Key)}");
             }
             if (parameter?.Values.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentException($"{nameof(ListRightPushParameter)}.{nameof(ListRightPushParameter.Values)}");
+                throw new ArgumentException($"{nameof(SixnetListRightPushParameter)}.{nameof(SixnetListRightPushParameter.Values)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLeftPushStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListLeftPushResult()
+            return new SixnetListLeftPushResult()
             {
                 Success = true,
                 NewListLength = result,
@@ -805,16 +805,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List left pop parameter</param>
         /// <returns>list left pop result</returns>
-        public async Task<ListLeftPopResult> ListLeftPopAsync(CacheServer server, ListLeftPopParameter parameter)
+        public async Task<SixnetListLeftPopResult> ListLeftPopAsync(SixnetCacheServer server, SixnetListLeftPopParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListLeftPopParameter)}.{nameof(ListLeftPopParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListLeftPopParameter)}.{nameof(SixnetListLeftPopParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListLeftPopStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListLeftPopResult()
+            return new SixnetListLeftPopResult()
             {
                 Success = true,
                 PopValue = result,
@@ -835,16 +835,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List insert before parameter</param>
         /// <returns>Return list insert begore result</returns>
-        public async Task<ListInsertBeforeResult> ListInsertBeforeAsync(CacheServer server, ListInsertBeforeParameter parameter)
+        public async Task<SixnetListInsertBeforeResult> ListInsertBeforeAsync(SixnetCacheServer server, SixnetListInsertBeforeParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListInsertBeforeParameter)}.{nameof(ListInsertBeforeParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListInsertBeforeParameter)}.{nameof(SixnetListInsertBeforeParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListInsertBeforeStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListInsertBeforeResult()
+            return new SixnetListInsertBeforeResult()
             {
                 Success = result > 0,
                 NewListLength = result,
@@ -865,16 +865,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List insert after parameter</param>
         /// <returns>Return list insert after result</returns>
-        public async Task<ListInsertAfterResult> ListInsertAfterAsync(CacheServer server, ListInsertAfterParameter parameter)
+        public async Task<SixnetListInsertAfterResult> ListInsertAfterAsync(SixnetCacheServer server, SixnetListInsertAfterParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListInsertAfterParameter)}.{nameof(ListInsertAfterParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListInsertAfterParameter)}.{nameof(SixnetListInsertAfterParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListInsertAfterStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListInsertAfterResult()
+            return new SixnetListInsertAfterResult()
             {
                 Success = result > 0,
                 NewListLength = result,
@@ -896,16 +896,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">List get by index parameter</param>
         /// <returns>Return list get by index result</returns>
-        public async Task<ListGetByIndexResult> ListGetByIndexAsync(CacheServer server, ListGetByIndexParameter parameter)
+        public async Task<SixnetListGetByIndexResult> ListGetByIndexAsync(SixnetCacheServer server, SixnetListGetByIndexParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ListInsertAfterParameter)}.{nameof(ListInsertAfterParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetListInsertAfterParameter)}.{nameof(SixnetListInsertAfterParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetListGetByIndexStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ListGetByIndexResult()
+            return new SixnetListGetByIndexResult()
             {
                 Success = true,
                 Value = result,
@@ -928,16 +928,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash values parameter</param>
         /// <returns>Return hash values result</returns>
-        public async Task<HashValuesResult> HashValuesAsync(CacheServer server, HashValuesParameter parameter)
+        public async Task<SixnetHashValuesResult> HashValuesAsync(SixnetCacheServer server, SixnetHashValuesParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashValuesParameter)}.{nameof(HashValuesParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashValuesParameter)}.{nameof(SixnetHashValuesParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashValuesStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashValuesResult()
+            return new SixnetHashValuesResult()
             {
                 Success = true,
                 Values = result.Select(c => { dynamic value = c; return value; }).ToList(),
@@ -957,20 +957,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash set parameter</param>
         /// <returns>Return hash set result</returns>
-        public async Task<HashSetResult> HashSetAsync(CacheServer server, HashSetParameter parameter)
+        public async Task<SixnetHashSetResult> HashSetAsync(SixnetCacheServer server, SixnetHashSetParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashSetParameter)}.{nameof(HashSetParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashSetParameter)}.{nameof(SixnetHashSetParameter.Key)}");
             }
             if (parameter?.Items.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentNullException($"{nameof(HashSetParameter)}.{nameof(HashSetParameter.Items)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashSetParameter)}.{nameof(SixnetHashSetParameter.Items)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashSetStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashSetResult()
+            return new SixnetHashSetResult()
             {
                 Success = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase),
                 CacheServer = server,
@@ -988,16 +988,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash length parameter</param>
         /// <returns>Return hash length result</returns>
-        public async Task<HashLengthResult> HashLengthAsync(CacheServer server, HashLengthParameter parameter)
+        public async Task<SixnetHashLengthResult> HashLengthAsync(SixnetCacheServer server, SixnetHashLengthParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashLengthParameter)}.{nameof(HashLengthParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashLengthParameter)}.{nameof(SixnetHashLengthParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashLengthResult()
+            return new SixnetHashLengthResult()
             {
                 Success = true,
                 Length = result,
@@ -1016,16 +1016,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash key parameter</param>
         /// <returns>Return hash keys result</returns>
-        public async Task<HashKeysResult> HashKeysAsync(CacheServer server, HashKeysParameter parameter)
+        public async Task<SixnetHashKeysResult> HashKeysAsync(SixnetCacheServer server, SixnetHashKeysParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashKeysParameter)}.{nameof(HashKeysParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashKeysParameter)}.{nameof(SixnetHashKeysParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashKeysStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashKeysResult()
+            return new SixnetHashKeysResult()
             {
                 Success = true,
                 HashKeys = result.Select(c => { string key = c; return key; }).ToList(),
@@ -1047,15 +1047,15 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash increment parameter</param>
         /// <returns>Return hash increment result</returns>
-        public async Task<HashIncrementResult> HashIncrementAsync(CacheServer server, HashIncrementParameter parameter)
+        public async Task<SixnetHashIncrementResult> HashIncrementAsync(SixnetCacheServer server, SixnetHashIncrementParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashIncrementParameter)}.{nameof(HashIncrementParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashIncrementParameter)}.{nameof(SixnetHashIncrementParameter.Key)}");
             }
             if (parameter?.IncrementValue == null)
             {
-                throw new ArgumentNullException($"{nameof(HashIncrementParameter)}.{nameof(HashIncrementParameter.IncrementValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashIncrementParameter)}.{nameof(SixnetHashIncrementParameter.IncrementValue)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var cacheKey = parameter.Key.GetActualKey();
@@ -1088,7 +1088,7 @@ namespace Sixnet.Cache.Redis
             {
                 newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
             }
-            return new HashIncrementResult()
+            return new SixnetHashIncrementResult()
             {
                 Success = true,
                 NewValue = newValue,
@@ -1109,20 +1109,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash get parameter</param>
         /// <returns>Return hash get result</returns>
-        public async Task<HashGetResult> HashGetAsync(CacheServer server, HashGetParameter parameter)
+        public async Task<SixnetHashGetResult> HashGetAsync(SixnetCacheServer server, SixnetHashGetParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashGetParameter)}.{nameof(HashGetParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashGetParameter)}.{nameof(SixnetHashGetParameter.Key)}");
             }
             if (string.IsNullOrWhiteSpace(parameter?.HashField))
             {
-                throw new ArgumentNullException($"{nameof(HashGetParameter)}.{nameof(HashGetParameter.HashField)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashGetParameter)}.{nameof(SixnetHashGetParameter.HashField)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashGetStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashGetResult()
+            return new SixnetHashGetResult()
             {
                 Success = true,
                 Value = result,
@@ -1141,11 +1141,11 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash get all parameter</param>
         /// <returns>Return hash get all result</returns>
-        public async Task<HashGetAllResult> HashGetAllAsync(CacheServer server, HashGetAllParameter parameter)
+        public async Task<SixnetHashGetAllResult> HashGetAllAsync(SixnetCacheServer server, SixnetHashGetAllParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashGetAllParameter)}.{nameof(HashGetAllParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashGetAllParameter)}.{nameof(SixnetHashGetAllParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashGetAllStatement(parameter);
@@ -1155,7 +1155,7 @@ namespace Sixnet.Cache.Redis
             {
                 values[result[i]] = result[i + 1];
             }
-            return new HashGetAllResult()
+            return new SixnetHashGetAllResult()
             {
                 Success = true,
                 HashValues = values,
@@ -1174,20 +1174,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Options</param>
         /// <returns>hash exists result</returns>
-        public async Task<HashExistsResult> HashExistAsync(CacheServer server, HashExistsParameter parameter)
+        public async Task<SixnetHashExistsResult> HashExistAsync(SixnetCacheServer server, SixnetHashExistsParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashExistsParameter)}.{nameof(HashExistsParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashExistsParameter)}.{nameof(SixnetHashExistsParameter.Key)}");
             }
             if (string.IsNullOrWhiteSpace(parameter?.HashField))
             {
-                throw new ArgumentNullException($"{nameof(HashExistsParameter)}.{nameof(HashExistsParameter.HashField)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashExistsParameter)}.{nameof(SixnetHashExistsParameter.HashField)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashExistStatement(parameter);
             var result = (int)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashExistsResult()
+            return new SixnetHashExistsResult()
             {
                 Success = true,
                 HasField = result == 1,
@@ -1207,20 +1207,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash delete parameter</param>
         /// <returns>Return hash delete result</returns>
-        public async Task<HashDeleteResult> HashDeleteAsync(CacheServer server, HashDeleteParameter parameter)
+        public async Task<SixnetHashDeleteResult> HashDeleteAsync(SixnetCacheServer server, SixnetHashDeleteParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashDeleteParameter)}.{nameof(HashDeleteParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashDeleteParameter)}.{nameof(SixnetHashDeleteParameter.Key)}");
             }
             if (parameter.HashFields.IsNullOrEmpty())
             {
-                throw new ArgumentNullException($"{nameof(HashDeleteParameter)}.{nameof(HashDeleteParameter.HashFields)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashDeleteParameter)}.{nameof(SixnetHashDeleteParameter.HashFields)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashDeleteStatement(parameter);
             var result = (int)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new HashDeleteResult()
+            return new SixnetHashDeleteResult()
             {
                 Success = result > 0,
                 CacheServer = server,
@@ -1240,15 +1240,15 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash decrement parameter</param>
         /// <returns>Return hash decrement result</returns>
-        public async Task<HashDecrementResult> HashDecrementAsync(CacheServer server, HashDecrementParameter parameter)
+        public async Task<SixnetHashDecrementResult> HashDecrementAsync(SixnetCacheServer server, SixnetHashDecrementParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashDecrementParameter)}.{nameof(HashDecrementParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashDecrementParameter)}.{nameof(SixnetHashDecrementParameter.Key)}");
             }
             if (parameter?.DecrementValue == null)
             {
-                throw new ArgumentNullException($"{nameof(HashDecrementParameter)}.{nameof(HashDecrementParameter.DecrementValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashDecrementParameter)}.{nameof(SixnetHashDecrementParameter.DecrementValue)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var dataType = parameter.DecrementValue.GetType();
@@ -1281,7 +1281,7 @@ namespace Sixnet.Cache.Redis
             {
                 newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
             }
-            return new HashDecrementResult()
+            return new SixnetHashDecrementResult()
             {
                 Success = true,
                 NewValue = newValue,
@@ -1302,11 +1302,11 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Hash scan parameter</param>
         /// <returns>Return hash scan result</returns>
-        public async Task<HashScanResult> HashScanAsync(CacheServer server, HashScanParameter parameter)
+        public async Task<SixnetHashScanResult> HashScanAsync(SixnetCacheServer server, SixnetHashScanParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(HashScanParameter)}.{nameof(HashScanParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetHashScanParameter)}.{nameof(SixnetHashScanParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetHashScanStatement(parameter);
@@ -1326,7 +1326,7 @@ namespace Sixnet.Cache.Redis
                     values[valueArray[i]] = valueArray[i + 1];
                 }
             }
-            return new HashScanResult()
+            return new SixnetHashScanResult()
             {
                 Success = true,
                 Cursor = newCursor,
@@ -1351,20 +1351,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set remove parameter</param>
         /// <returns>Return set remove result</returns>
-        public async Task<SetRemoveResult> SetRemoveAsync(CacheServer server, SetRemoveParameter parameter)
+        public async Task<SixnetSetRemoveResult> SetRemoveAsync(SixnetCacheServer server, SixnetSetRemoveParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetRemoveParameter)}.{nameof(SixnetSetRemoveParameter.Key)}");
             }
             if (parameter.Members.IsNullOrEmpty())
             {
-                throw new ArgumentException($"{nameof(SetRemoveParameter)}.{nameof(SetRemoveParameter.Members)}");
+                throw new ArgumentException($"{nameof(SixnetSetRemoveParameter)}.{nameof(SixnetSetRemoveParameter.Members)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRemoveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetRemoveResult()
+            return new SixnetSetRemoveResult()
             {
                 Success = true,
                 RemoveCount = result,
@@ -1386,16 +1386,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set random members parameter</param>
         /// <returns>Return set random members result</returns>
-        public async Task<SetRandomMembersResult> SetRandomMembersAsync(CacheServer server, SetRandomMembersParameter parameter)
+        public async Task<SixnetSetRandomMembersResult> SetRandomMembersAsync(SixnetCacheServer server, SixnetSetRandomMembersParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetRandomMembersParameter)}.{nameof(SetRandomMembersParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetRandomMembersParameter)}.{nameof(SixnetSetRandomMembersParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRandomMembersStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetRandomMembersResult()
+            return new SixnetSetRandomMembersResult()
             {
                 Success = true,
                 Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -1414,16 +1414,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set random member parameter</param>
         /// <returns>Return set random member</returns>
-        public async Task<SetRandomMemberResult> SetRandomMemberAsync(CacheServer server, SetRandomMemberParameter parameter)
+        public async Task<SixnetSetRandomMemberResult> SetRandomMemberAsync(SixnetCacheServer server, SixnetSetRandomMemberParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetRandomMemberParameter)}.{nameof(SetRandomMemberParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetRandomMemberParameter)}.{nameof(SixnetSetRandomMemberParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetRandomMemberStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetRandomMemberResult()
+            return new SixnetSetRandomMemberResult()
             {
                 Success = true,
                 Member = result,
@@ -1442,16 +1442,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set pop parameter</param>
         /// <returns>Return set pop result</returns>
-        public async Task<SetPopResult> SetPopAsync(CacheServer server, SetPopParameter parameter)
+        public async Task<SixnetSetPopResult> SetPopAsync(SixnetCacheServer server, SixnetSetPopParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetPopParameter)}.{nameof(SetPopParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetPopParameter)}.{nameof(SixnetSetPopParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetPopStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetPopResult()
+            return new SixnetSetPopResult()
             {
                 Success = true,
                 PopValue = result,
@@ -1473,24 +1473,24 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set move parameter</param>
         /// <returns>Return set move result</returns>
-        public async Task<SetMoveResult> SetMoveAsync(CacheServer server, SetMoveParameter parameter)
+        public async Task<SixnetSetMoveResult> SetMoveAsync(SixnetCacheServer server, SixnetSetMoveParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.SourceKey))
             {
-                throw new ArgumentNullException($"{nameof(SetMoveParameter)}.{nameof(SetMoveParameter.SourceKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetMoveParameter)}.{nameof(SixnetSetMoveParameter.SourceKey)}");
             }
             if (string.IsNullOrWhiteSpace(parameter?.DestinationKey))
             {
-                throw new ArgumentNullException($"{nameof(SetMoveParameter)}.{nameof(SetMoveParameter.DestinationKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetMoveParameter)}.{nameof(SixnetSetMoveParameter.DestinationKey)}");
             }
             if (string.IsNullOrEmpty(parameter?.MoveMember))
             {
-                throw new ArgumentNullException($"{nameof(SetMoveParameter)}.{nameof(SetMoveParameter.MoveMember)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetMoveParameter)}.{nameof(SixnetSetMoveParameter.MoveMember)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetMoveStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetMoveResult()
+            return new SixnetSetMoveResult()
             {
                 Success = result == "1",
                 CacheServer = server,
@@ -1508,16 +1508,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set members parameter</param>
         /// <returns>Return set members result</returns>
-        public async Task<SetMembersResult> SetMembersAsync(CacheServer server, SetMembersParameter parameter)
+        public async Task<SixnetSetMembersResult> SetMembersAsync(SixnetCacheServer server, SixnetSetMembersParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetMembersParameter)}.{nameof(SetMembersParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetMembersParameter)}.{nameof(SixnetSetMembersParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetMembersStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetMembersResult()
+            return new SixnetSetMembersResult()
             {
                 Success = true,
                 Members = result?.Select(c => { string member = c; return member; }).ToList() ?? new List<string>(0),
@@ -1536,16 +1536,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set length parameter</param>
         /// <returns>Return set length result</returns>
-        public async Task<SetLengthResult> SetLengthAsync(CacheServer server, SetLengthParameter parameter)
+        public async Task<SixnetSetLengthResult> SetLengthAsync(SixnetCacheServer server, SixnetSetLengthParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetLengthParameter)}.{nameof(SetLengthParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetLengthParameter)}.{nameof(SixnetSetLengthParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetLengthResult()
+            return new SixnetSetLengthResult()
             {
                 Success = true,
                 Length = result,
@@ -1564,20 +1564,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set contains parameter</param>
         /// <returns>Return set contains result</returns>
-        public async Task<SetContainsResult> SetContainsAsync(CacheServer server, SetContainsParameter parameter)
+        public async Task<SixnetSetContainsResult> SetContainsAsync(SixnetCacheServer server, SixnetSetContainsParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetContainsParameter)}.{nameof(SetContainsParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetContainsParameter)}.{nameof(SixnetSetContainsParameter.Key)}");
             }
             if (parameter.Member == null)
             {
-                throw new ArgumentNullException($"{nameof(SetContainsParameter)}.{nameof(SetContainsParameter.Member)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetContainsParameter)}.{nameof(SixnetSetContainsParameter.Member)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetContainsStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetContainsResult()
+            return new SixnetSetContainsResult()
             {
                 Success = true,
                 ContainsValue = result == "1",
@@ -1597,16 +1597,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set combine parameter</param>
         /// <returns>Return set combine result</returns>
-        public async Task<SetCombineResult> SetCombineAsync(CacheServer server, SetCombineParameter parameter)
+        public async Task<SixnetSetCombineResult> SetCombineAsync(SixnetCacheServer server, SixnetSetCombineParameter parameter)
         {
             if (parameter?.Keys.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentNullException($"{nameof(SetCombineParameter)}.{nameof(SetCombineParameter.Keys)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetCombineParameter)}.{nameof(SixnetSetCombineParameter.Keys)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetCombineStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetCombineResult()
+            return new SixnetSetCombineResult()
             {
                 Success = true,
                 CombineValues = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -1626,20 +1626,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set combine and store parameter</param>
         /// <returns>Return set combine and store result</returns>
-        public async Task<SetCombineAndStoreResult> SetCombineAndStoreAsync(CacheServer server, SetCombineAndStoreParameter parameter)
+        public async Task<SixnetSetCombineAndStoreResult> SetCombineAndStoreAsync(SixnetCacheServer server, SixnetSetCombineAndStoreParameter parameter)
         {
             if (parameter?.SourceKeys.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentNullException($"{nameof(SetCombineAndStoreParameter)}.{nameof(SetCombineAndStoreParameter.SourceKeys)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetCombineAndStoreParameter)}.{nameof(SixnetSetCombineAndStoreParameter.SourceKeys)}");
             }
             if (string.IsNullOrWhiteSpace(parameter.DestinationKey))
             {
-                throw new ArgumentNullException($"{nameof(SetCombineAndStoreParameter)}.{nameof(SetCombineAndStoreParameter.DestinationKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetCombineAndStoreParameter)}.{nameof(SixnetSetCombineAndStoreParameter.DestinationKey)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetCombineAndStoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetCombineAndStoreResult()
+            return new SixnetSetCombineAndStoreResult()
             {
                 Success = true,
                 Count = result,
@@ -1660,20 +1660,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Set add parameter</param>
         /// <returns>Return set add result</returns>
-        public async Task<SetAddResult> SetAddAsync(CacheServer server, SetAddParameter parameter)
+        public async Task<SixnetSetAddResult> SetAddAsync(SixnetCacheServer server, SixnetSetAddParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SetAddParameter)}.{nameof(SetAddParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSetAddParameter)}.{nameof(SixnetSetAddParameter.Key)}");
             }
             if (parameter.Members.IsNullOrEmpty())
             {
-                throw new ArgumentException($"{nameof(SetAddParameter)}.{nameof(SetAddParameter.Members)}");
+                throw new ArgumentException($"{nameof(SixnetSetAddParameter)}.{nameof(SixnetSetAddParameter.Members)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSetAddStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SetAddResult()
+            return new SixnetSetAddResult()
             {
                 Success = result > 0,
                 CacheServer = server,
@@ -1696,20 +1696,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Sorted set score parameter</param>
         /// <returns>Return sorted set score result</returns>
-        public async Task<SortedSetScoreResult> SortedSetScoreAsync(CacheServer server, SortedSetScoreParameter parameter)
+        public async Task<SixnetSortedSetScoreResult> SortedSetScoreAsync(SixnetCacheServer server, SixnetSortedSetScoreParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetScoreParameter)}.{nameof(SortedSetScoreParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetScoreParameter)}.{nameof(SixnetSortedSetScoreParameter.Key)}");
             }
             if (parameter.Member == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetScoreParameter)}.{nameof(SortedSetScoreParameter.Member)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetScoreParameter)}.{nameof(SixnetSortedSetScoreParameter.Member)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetScoreStatement(parameter);
             var result = (double?)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetScoreResult()
+            return new SixnetSortedSetScoreResult()
             {
                 Success = true,
                 Score = result,
@@ -1730,24 +1730,24 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Sorted set remove range by value parameter</param>
         /// <returns>Return sorted set remove range by value result</returns>
-        public async Task<SortedSetRemoveRangeByValueResult> SortedSetRemoveRangeByValueAsync(CacheServer server, SortedSetRemoveRangeByValueParameter parameter)
+        public async Task<SixnetSortedSetRemoveRangeByValueResult> SortedSetRemoveRangeByValueAsync(SixnetCacheServer server, SixnetSortedSetRemoveRangeByValueParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByValueParameter)}.{nameof(SixnetSortedSetRemoveRangeByValueParameter.Key)}");
             }
             if (parameter.MinValue == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MinValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByValueParameter)}.{nameof(SixnetSortedSetRemoveRangeByValueParameter.MinValue)}");
             }
             if (parameter.MaxValue == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MaxValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByValueParameter)}.{nameof(SixnetSortedSetRemoveRangeByValueParameter.MaxValue)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByValueStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRemoveRangeByValueResult()
+            return new SixnetSortedSetRemoveRangeByValueResult()
             {
                 RemoveCount = result,
                 Success = true,
@@ -1767,16 +1767,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Sorted set remove range by score parameter</param>
         /// <returns>Return sorted set remove range by score result</returns>
-        public async Task<SortedSetRemoveRangeByScoreResult> SortedSetRemoveRangeByScoreAsync(CacheServer server, SortedSetRemoveRangeByScoreParameter parameter)
+        public async Task<SixnetSortedSetRemoveRangeByScoreResult> SortedSetRemoveRangeByScoreAsync(SixnetCacheServer server, SixnetSortedSetRemoveRangeByScoreParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByScoreParameter)}.{nameof(SortedSetRemoveRangeByScoreParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByScoreParameter)}.{nameof(SixnetSortedSetRemoveRangeByScoreParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByScoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRemoveRangeByScoreResult()
+            return new SixnetSortedSetRemoveRangeByScoreResult()
             {
                 RemoveCount = result,
                 Success = true,
@@ -1800,16 +1800,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Sorted set remove range by rank parameter</param>
         /// <returns>Return sorted set remove range by rank result</returns>
-        public async Task<SortedSetRemoveRangeByRankResult> SortedSetRemoveRangeByRankAsync(CacheServer server, SortedSetRemoveRangeByRankParameter parameter)
+        public async Task<SixnetSortedSetRemoveRangeByRankResult> SortedSetRemoveRangeByRankAsync(SixnetCacheServer server, SixnetSortedSetRemoveRangeByRankParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByRankParameter)}.{nameof(SortedSetRemoveRangeByRankParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByRankParameter)}.{nameof(SixnetSortedSetRemoveRangeByRankParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveRangeByRankStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRemoveRangeByRankResult()
+            return new SixnetSortedSetRemoveRangeByRankResult()
             {
                 RemoveCount = result,
                 Success = true,
@@ -1829,20 +1829,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Sorted set remove parameter</param>
         /// <returns>sorted set remove result</returns>
-        public async Task<SortedSetRemoveResult> SortedSetRemoveAsync(CacheServer server, SortedSetRemoveParameter parameter)
+        public async Task<SixnetSortedSetRemoveResult> SortedSetRemoveAsync(SixnetCacheServer server, SixnetSortedSetRemoveParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveParameter)}.{nameof(SortedSetRemoveParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveParameter)}.{nameof(SixnetSortedSetRemoveParameter.Key)}");
             }
             if (parameter.RemoveMembers.IsNullOrEmpty())
             {
-                throw new ArgumentException($"{nameof(SortedSetRemoveParameter)}.{nameof(SortedSetRemoveParameter.RemoveMembers)}");
+                throw new ArgumentException($"{nameof(SixnetSortedSetRemoveParameter)}.{nameof(SixnetSortedSetRemoveParameter.RemoveMembers)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRemoveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRemoveResult()
+            return new SixnetSortedSetRemoveResult()
             {
                 Success = true,
                 RemoveCount = result,
@@ -1863,20 +1863,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sorted set rank result</returns>
-        public async Task<SortedSetRankResult> SortedSetRankAsync(CacheServer server, SortedSetRankParameter parameter)
+        public async Task<SixnetSortedSetRankResult> SortedSetRankAsync(SixnetCacheServer server, SixnetSortedSetRankParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRankParameter)}.{nameof(SortedSetRankParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRankParameter)}.{nameof(SixnetSortedSetRankParameter.Key)}");
             }
             if (parameter.Member == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRankParameter)}.{nameof(SortedSetRankParameter.Member)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRankParameter)}.{nameof(SixnetSortedSetRankParameter.Member)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRankStatement(parameter);
             var result = (long?)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRankResult()
+            return new SixnetSortedSetRankResult()
             {
                 Success = true,
                 Rank = result,
@@ -1897,24 +1897,24 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Sorted set range by value parameter</param>
         /// <returns>sorted set range by value result</returns>
-        public async Task<SortedSetRangeByValueResult> SortedSetRangeByValueAsync(CacheServer server, SortedSetRangeByValueParameter parameter)
+        public async Task<SixnetSortedSetRangeByValueResult> SortedSetRangeByValueAsync(SixnetCacheServer server, SixnetSortedSetRangeByValueParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByValueParameter)}.{nameof(SixnetSortedSetRemoveRangeByValueParameter.Key)}");
             }
             if (parameter.MinValue == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MinValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByValueParameter)}.{nameof(SixnetSortedSetRemoveRangeByValueParameter.MinValue)}");
             }
             if (parameter.MaxValue == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRemoveRangeByValueParameter)}.{nameof(SortedSetRemoveRangeByValueParameter.MaxValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRemoveRangeByValueParameter)}.{nameof(SixnetSortedSetRemoveRangeByValueParameter.MaxValue)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByValueStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRangeByValueResult()
+            return new SixnetSortedSetRangeByValueResult()
             {
                 Success = true,
                 Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -1937,27 +1937,27 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Option</param>
         /// <returns>Return sorted set range by score with scores result</returns>
-        public async Task<SortedSetRangeByScoreWithScoresResult> SortedSetRangeByScoreWithScoresAsync(CacheServer server, SortedSetRangeByScoreWithScoresParameter parameter)
+        public async Task<SixnetSortedSetRangeByScoreWithScoresResult> SortedSetRangeByScoreWithScoresAsync(SixnetCacheServer server, SixnetSortedSetRangeByScoreWithScoresParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreWithScoresParameter)}.{nameof(SortedSetRangeByScoreWithScoresParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRangeByScoreWithScoresParameter)}.{nameof(SixnetSortedSetRangeByScoreWithScoresParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByScoreWithScoresStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
+            List<SixnetSortedSetMember> members = new List<SixnetSortedSetMember>(result?.Length / 2 ?? 0);
             for (var i = 0; i < result.Length; i += 2)
             {
                 var value = result[i];
                 double.TryParse(result[i + 1], out var score);
-                members.Add(new SortedSetMember
+                members.Add(new SixnetSortedSetMember
                 {
                     Value = value,
                     Score = score
                 });
             }
-            return new SortedSetRangeByScoreWithScoresResult()
+            return new SixnetSortedSetRangeByScoreWithScoresResult()
             {
                 Success = true,
                 Members = members,
@@ -1980,16 +1980,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sorted set range by score result</returns>
-        public async Task<SortedSetRangeByScoreResult> SortedSetRangeByScoreAsync(CacheServer server, SortedSetRangeByScoreParameter parameter)
+        public async Task<SixnetSortedSetRangeByScoreResult> SortedSetRangeByScoreAsync(SixnetCacheServer server, SixnetSortedSetRangeByScoreParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRangeByScoreParameter)}.{nameof(SortedSetRangeByScoreParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRangeByScoreParameter)}.{nameof(SixnetSortedSetRangeByScoreParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByScoreStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRangeByScoreResult()
+            return new SixnetSortedSetRangeByScoreResult()
             {
                 Success = true,
                 Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -2014,27 +2014,27 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cacheserver</param>
         /// <param name="parameter">Option</param>
         /// <returns>Return sorted set range by rank with scores result</returns>
-        public async Task<SortedSetRangeByRankWithScoresResult> SortedSetRangeByRankWithScoresAsync(CacheServer server, SortedSetRangeByRankWithScoresParameter parameter)
+        public async Task<SixnetSortedSetRangeByRankWithScoresResult> SortedSetRangeByRankWithScoresAsync(SixnetCacheServer server, SixnetSortedSetRangeByRankWithScoresParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRangeByRankWithScoresParameter)}.{nameof(SortedSetRangeByRankWithScoresParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRangeByRankWithScoresParameter)}.{nameof(SixnetSortedSetRangeByRankWithScoresParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByRankWithScoresStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            List<SortedSetMember> members = new List<SortedSetMember>(result?.Length / 2 ?? 0);
+            List<SixnetSortedSetMember> members = new List<SixnetSortedSetMember>(result?.Length / 2 ?? 0);
             for (var i = 0; i < result.Length; i += 2)
             {
                 var value = result[i];
                 double.TryParse(result[i + 1], out var score);
-                members.Add(new SortedSetMember
+                members.Add(new SixnetSortedSetMember
                 {
                     Value = value,
                     Score = score
                 });
             }
-            return new SortedSetRangeByRankWithScoresResult()
+            return new SixnetSortedSetRangeByRankWithScoresResult()
             {
                 Success = true,
                 Members = members,
@@ -2059,16 +2059,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sorted set range by rank result</returns>
-        public async Task<SortedSetRangeByRankResult> SortedSetRangeByRankAsync(CacheServer server, SortedSetRangeByRankParameter parameter)
+        public async Task<SixnetSortedSetRangeByRankResult> SortedSetRangeByRankAsync(SixnetCacheServer server, SixnetSortedSetRangeByRankParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetRangeByRankParameter)}.{nameof(SortedSetRangeByRankParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetRangeByRankParameter)}.{nameof(SixnetSortedSetRangeByRankParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetRangeByRankStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetRangeByRankResult()
+            return new SixnetSortedSetRangeByRankResult()
             {
                 Success = true,
                 Members = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -2089,24 +2089,24 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Option</param>
         /// <returns>Return sorted set lenght by value result</returns>
-        public async Task<SortedSetLengthByValueResult> SortedSetLengthByValueAsync(CacheServer server, SortedSetLengthByValueParameter parameter)
+        public async Task<SixnetSortedSetLengthByValueResult> SortedSetLengthByValueAsync(SixnetCacheServer server, SixnetSortedSetLengthByValueParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetLengthByValueParameter)}.{nameof(SixnetSortedSetLengthByValueParameter.Key)}");
             }
             if (parameter.MinValue == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.MinValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetLengthByValueParameter)}.{nameof(SixnetSortedSetLengthByValueParameter.MinValue)}");
             }
             if (parameter.MaxValue == null)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.MaxValue)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetLengthByValueParameter)}.{nameof(SixnetSortedSetLengthByValueParameter.MaxValue)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetLengthByValueStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetLengthByValueResult()
+            return new SixnetSortedSetLengthByValueResult()
             {
                 Success = true,
                 Length = result,
@@ -2126,16 +2126,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Option</param>
         /// <returns>Return sorted set length result</returns>
-        public async Task<SortedSetLengthResult> SortedSetLengthAsync(CacheServer server, SortedSetLengthParameter parameter)
+        public async Task<SixnetSortedSetLengthResult> SortedSetLengthAsync(SixnetCacheServer server, SixnetSortedSetLengthParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetLengthByValueParameter)}.{nameof(SortedSetLengthByValueParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetLengthByValueParameter)}.{nameof(SixnetSortedSetLengthByValueParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetLengthStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetLengthResult()
+            return new SixnetSortedSetLengthResult()
             {
                 Success = true,
                 Length = result,
@@ -2156,16 +2156,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Option</param>
         /// <returns>Return sorted set increment result</returns>
-        public async Task<SortedSetIncrementResult> SortedSetIncrementAsync(CacheServer server, SortedSetIncrementParameter parameter)
+        public async Task<SixnetSortedSetIncrementResult> SortedSetIncrementAsync(SixnetCacheServer server, SixnetSortedSetIncrementParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetIncrementParameter)}.{nameof(SortedSetIncrementParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetIncrementParameter)}.{nameof(SixnetSortedSetIncrementParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetIncrementStatement(parameter);
             var result = (double)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetIncrementResult()
+            return new SixnetSortedSetIncrementResult()
             {
                 Success = true,
                 NewScore = result,
@@ -2186,16 +2186,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="parameter">Option</param>
         /// <returns>Return sorted set decrement result</returns>
-        public async Task<SortedSetDecrementResult> SortedSetDecrementAsync(CacheServer server, SortedSetDecrementParameter parameter)
+        public async Task<SixnetSortedSetDecrementResult> SortedSetDecrementAsync(SixnetCacheServer server, SixnetSortedSetDecrementParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetDecrementParameter)}.{nameof(SortedSetDecrementParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetDecrementParameter)}.{nameof(SixnetSortedSetDecrementParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetDecrementStatement(parameter);
             var result = (double)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetDecrementResult()
+            return new SixnetSortedSetDecrementResult()
             {
                 Success = true,
                 NewScore = result,
@@ -2216,20 +2216,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sorted set combine and store result</returns>
-        public async Task<SortedSetCombineAndStoreResult> SortedSetCombineAndStoreAsync(CacheServer server, SortedSetCombineAndStoreParameter parameter)
+        public async Task<SixnetSortedSetCombineAndStoreResult> SortedSetCombineAndStoreAsync(SixnetCacheServer server, SixnetSortedSetCombineAndStoreParameter parameter)
         {
             if (parameter?.SourceKeys.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentNullException($"{nameof(SortedSetCombineAndStoreParameter)}.{nameof(SortedSetCombineAndStoreParameter.SourceKeys)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetCombineAndStoreParameter)}.{nameof(SixnetSortedSetCombineAndStoreParameter.SourceKeys)}");
             }
             if (string.IsNullOrWhiteSpace(parameter.DestinationKey))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetCombineAndStoreParameter)}.{nameof(SortedSetCombineAndStoreParameter.DestinationKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetCombineAndStoreParameter)}.{nameof(SixnetSortedSetCombineAndStoreParameter.DestinationKey)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetCombineAndStoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetCombineAndStoreResult()
+            return new SixnetSortedSetCombineAndStoreResult()
             {
                 Success = true,
                 NewSetLength = result,
@@ -2251,20 +2251,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sorted set add result</returns>
-        public async Task<SortedSetAddResult> SortedSetAddAsync(CacheServer server, SortedSetAddParameter parameter)
+        public async Task<SixnetSortedSetAddResult> SortedSetAddAsync(SixnetCacheServer server, SixnetSortedSetAddParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortedSetAddParameter)}.{nameof(SortedSetAddParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortedSetAddParameter)}.{nameof(SixnetSortedSetAddParameter.Key)}");
             }
             if (parameter.Members.IsNullOrEmpty())
             {
-                throw new ArgumentException($"{nameof(SortedSetAddParameter)}.{nameof(SortedSetAddParameter.Members)}");
+                throw new ArgumentException($"{nameof(SixnetSortedSetAddParameter)}.{nameof(SixnetSortedSetAddParameter.Members)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortedSetAddStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortedSetAddResult()
+            return new SixnetSortedSetAddResult()
             {
                 Success = true,
                 Length = result,
@@ -2294,16 +2294,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sort result</returns>
-        public async Task<SortResult> SortAsync(CacheServer server, SortParameter parameter)
+        public async Task<SixnetSortResult> SortAsync(SixnetCacheServer server, SixnetSortParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(SortParameter)}.{nameof(SortParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortParameter)}.{nameof(SixnetSortParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortStatement(parameter);
             var result = (RedisValue[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortResult()
+            return new SixnetSortResult()
             {
                 Success = true,
                 Values = result?.Select(c => { string value = c; return value; }).ToList() ?? new List<string>(0),
@@ -2329,20 +2329,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>sort and store result</returns>
-        public async Task<SortAndStoreResult> SortAndStoreAsync(CacheServer server, SortAndStoreParameter parameter)
+        public async Task<SixnetSortAndStoreResult> SortAndStoreAsync(SixnetCacheServer server, SixnetSortAndStoreParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.SourceKey))
             {
-                throw new ArgumentNullException($"{nameof(SortAndStoreParameter)}.{nameof(SortAndStoreParameter.SourceKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortAndStoreParameter)}.{nameof(SixnetSortAndStoreParameter.SourceKey)}");
             }
             if (string.IsNullOrWhiteSpace(parameter?.DestinationKey))
             {
-                throw new ArgumentNullException($"{nameof(SortAndStoreParameter)}.{nameof(SortAndStoreParameter.DestinationKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetSortAndStoreParameter)}.{nameof(SixnetSortAndStoreParameter.DestinationKey)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetSortAndStoreStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new SortAndStoreResult()
+            return new SixnetSortAndStoreResult()
             {
                 Success = true,
                 Length = result,
@@ -2366,16 +2366,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key type result</returns>
-        public async Task<TypeResult> KeyTypeAsync(CacheServer server, TypeParameter parameter)
+        public async Task<SixnetTypeResult> KeyTypeAsync(SixnetCacheServer server, SixnetTypeParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(TypeParameter)}.{nameof(TypeParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetTypeParameter)}.{nameof(SixnetTypeParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyTypeStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new TypeResult()
+            return new SixnetTypeResult()
             {
                 Success = true,
                 KeyType = SixnetRedisManager.GetCacheKeyType(result),
@@ -2396,16 +2396,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key time to live result</returns>
-        public async Task<TimeToLiveResult> KeyTimeToLiveAsync(CacheServer server, TimeToLiveParameter parameter)
+        public async Task<SixnetTimeToLiveResult> KeyTimeToLiveAsync(SixnetCacheServer server, SixnetTimeToLiveParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(TimeToLiveParameter)}.{nameof(TimeToLiveParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetTimeToLiveParameter)}.{nameof(SixnetTimeToLiveParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyTimeToLiveStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new TimeToLiveResult()
+            return new SixnetTimeToLiveResult()
             {
                 Success = true,
                 TimeToLiveSeconds = result,
@@ -2428,16 +2428,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key restore result</returns>
-        public async Task<RestoreResult> KeyRestoreAsync(CacheServer server, RestoreParameter parameter)
+        public async Task<SixnetRestoreResult> KeyRestoreAsync(SixnetCacheServer server, SixnetRestoreParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(RestoreParameter)}.{nameof(RestoreParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetRestoreParameter)}.{nameof(SixnetRestoreParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRestoreStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new RestoreResult()
+            return new SixnetRestoreResult()
             {
                 Success = result,
                 CacheServer = server,
@@ -2456,20 +2456,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key rename result</returns>
-        public async Task<RenameResult> KeyRenameAsync(CacheServer server, RenameParameter parameter)
+        public async Task<SixnetRenameResult> KeyRenameAsync(SixnetCacheServer server, SixnetRenameParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(RenameParameter)}.{nameof(RenameParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetRenameParameter)}.{nameof(SixnetRenameParameter.Key)}");
             }
             if (string.IsNullOrWhiteSpace(parameter?.NewKey))
             {
-                throw new ArgumentNullException($"{nameof(RenameParameter)}.{nameof(RenameParameter.NewKey)}");
+                throw new ArgumentNullException($"{nameof(SixnetRenameParameter)}.{nameof(SixnetRenameParameter.NewKey)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRenameStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new RenameResult()
+            return new SixnetRenameResult()
             {
                 Success = result,
                 CacheServer = server,
@@ -2487,12 +2487,12 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key random result</returns>
-        public async Task<RandomResult> KeyRandomAsync(CacheServer server, RandomParameter parameter)
+        public async Task<SixnetRandomResult> KeyRandomAsync(SixnetCacheServer server, SixnetRandomParameter parameter)
         {
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyRandomStatement(parameter);
             var result = (string)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new RandomResult()
+            return new SixnetRandomResult()
             {
                 Success = true,
                 Key = result,
@@ -2512,16 +2512,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key persist result</returns>
-        public async Task<PersistResult> KeyPersistAsync(CacheServer server, PersistParameter parameter)
+        public async Task<SixnetPersistResult> KeyPersistAsync(SixnetCacheServer server, SixnetPersistParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(PersistParameter)}.{nameof(PersistParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetPersistParameter)}.{nameof(SixnetPersistParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyPersistStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new PersistResult()
+            return new SixnetPersistResult()
             {
                 Success = result,
                 CacheServer = server,
@@ -2542,20 +2542,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key move result</returns>
-        public async Task<MoveResult> KeyMoveAsync(CacheServer server, MoveParameter parameter)
+        public async Task<SixnetMoveResult> KeyMoveAsync(SixnetCacheServer server, SixnetMoveParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(MoveParameter)}.{nameof(MoveParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetMoveParameter)}.{nameof(SixnetMoveParameter.Key)}");
             }
             if (!int.TryParse(parameter.DatabaseName, out var dbIndex) || dbIndex < 0)
             {
-                throw new ArgumentException($"{nameof(MoveParameter)}.{nameof(MoveParameter.DatabaseName)}");
+                throw new ArgumentException($"{nameof(SixnetMoveParameter)}.{nameof(SixnetMoveParameter.DatabaseName)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyMoveStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new MoveResult()
+            return new SixnetMoveResult()
             {
                 Success = result,
                 CacheServer = server,
@@ -2575,20 +2575,20 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key migrate result</returns>
-        public async Task<MigrateKeyResult> KeyMigrateAsync(CacheServer server, MigrateKeyParameter parameter)
+        public async Task<SixnetMigrateKeyResult> KeyMigrateAsync(SixnetCacheServer server, SixnetMigrateKeyParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(MigrateKeyParameter)}.{nameof(MigrateKeyParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetMigrateKeyParameter)}.{nameof(SixnetMigrateKeyParameter.Key)}");
             }
             if (parameter.Destination == null)
             {
-                throw new ArgumentNullException($"{nameof(MigrateKeyParameter)}.{nameof(MigrateKeyParameter.Destination)}");
+                throw new ArgumentNullException($"{nameof(SixnetMigrateKeyParameter)}.{nameof(SixnetMigrateKeyParameter.Destination)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyMigrateStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new MigrateKeyResult()
+            return new SixnetMigrateKeyResult()
             {
                 Success = true,
                 CacheServer = server,
@@ -2608,16 +2608,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key expire result</returns>
-        public async Task<ExpireResult> KeyExpireAsync(CacheServer server, ExpireParameter parameter)
+        public async Task<SixnetExpireResult> KeyExpireAsync(SixnetCacheServer server, SixnetExpireParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(ExpireParameter)}.{nameof(ExpireParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetExpireParameter)}.{nameof(SixnetExpireParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyExpireStatement(parameter);
             var result = (bool)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ExpireResult()
+            return new SixnetExpireResult()
             {
                 Success = result,
                 CacheServer = server,
@@ -2637,16 +2637,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key dump result</returns>
-        public async Task<DumpResult> KeyDumpAsync(CacheServer server, DumpParameter parameter)
+        public async Task<SixnetDumpResult> KeyDumpAsync(SixnetCacheServer server, SixnetDumpParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(DumpParameter)}.{nameof(DumpParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetDumpParameter)}.{nameof(SixnetDumpParameter.Key)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyDumpStatement(parameter);
             var result = (byte[])await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new DumpResult()
+            return new SixnetDumpResult()
             {
                 Success = true,
                 ByteValues = result,
@@ -2665,16 +2665,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>key delete result</returns>
-        public async Task<DeleteResult> KeyDeleteAsync(CacheServer server, DeleteParameter parameter)
+        public async Task<SixnetDeleteResult> KeyDeleteAsync(SixnetCacheServer server, SixnetDeleteParameter parameter)
         {
             if (parameter?.Keys.IsNullOrEmpty() ?? true)
             {
-                throw new ArgumentNullException($"{nameof(DeleteParameter)}.{nameof(DeleteParameter.Keys)}");
+                throw new ArgumentNullException($"{nameof(SixnetDeleteParameter)}.{nameof(SixnetDeleteParameter.Keys)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyDeleteStatement(parameter);
             var count = await database.RemoteDatabase.KeyDeleteAsync(statement.Keys, statement.Flags).ConfigureAwait(false);
-            return new DeleteResult()
+            return new SixnetDeleteResult()
             {
                 Success = true,
                 DeleteCount = count,
@@ -2693,16 +2693,16 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns></returns>
-        public async Task<ExistResult> KeyExistAsync(CacheServer server, ExistParameter parameter)
+        public async Task<SixnetExistResult> KeyExistAsync(SixnetCacheServer server, SixnetExistParameter parameter)
         {
             if (parameter.Keys.IsNullOrEmpty())
             {
-                throw new ArgumentNullException($"{nameof(ExistParameter)}.{nameof(ExistParameter.Keys)}");
+                throw new ArgumentNullException($"{nameof(SixnetExistParameter)}.{nameof(SixnetExistParameter.Keys)}");
             }
             var database = SixnetRedisManager.GetDatabase(server);
             var statement = GetKeyExistStatement(parameter);
             var result = (long)await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
-            return new ExistResult()
+            return new SixnetExistResult()
             {
                 Success = true,
                 KeyCount = result,
@@ -2721,12 +2721,12 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">server</param>
         /// <param name="parameter">parameter</param>
         /// <returns></returns>
-        public Task<ScanResult> KeyScanAsync(CacheServer server, ScanParameter parameter)
+        public Task<SixnetScanResult> KeyScanAsync(SixnetCacheServer server, SixnetScanParameter parameter)
         {
             var database = SixnetRedisManager.GetDatabase(server);
             var scanResult = database.RemoteDatabase.Execute("SCAN", parameter.Cursor, "MATCH", parameter.Pattern);
 
-            return Task.FromResult(new ScanResult());
+            return Task.FromResult(new SixnetScanResult());
         }
 
         #endregion
@@ -2743,7 +2743,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>Return get all database result</returns>
-        public async Task<GetAllDataBaseResult> GetAllDataBaseAsync(CacheServer server, GetAllDataBaseParameter parameter)
+        public async Task<SixnetGetAllDataBaseResult> GetAllDataBaseAsync(SixnetCacheServer server, SixnetGetAllDataBaseParameter parameter)
         {
             if (server == null)
             {
@@ -2751,11 +2751,11 @@ namespace Sixnet.Cache.Redis
             }
             if (parameter?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetAllDataBaseParameter)}.{nameof(GetAllDataBaseParameter.EndPoint)}");
+                throw new ArgumentNullException($"{nameof(SixnetGetAllDataBaseParameter)}.{nameof(SixnetGetAllDataBaseParameter.EndPoint)}");
             }
-            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new SixnetCacheEndPoint[1] { parameter.EndPoint }))
             {
-                var response = new GetAllDataBaseResult()
+                var response = new SixnetGetAllDataBaseResult()
                 {
                     Success = true,
                     CacheServer = server,
@@ -2766,10 +2766,10 @@ namespace Sixnet.Cache.Redis
                 {
                     var databaseConfig = configs.FirstOrDefault(c => string.Equals(c.Key, "databases", StringComparison.OrdinalIgnoreCase));
                     int dataBaseSize = databaseConfig.Value.ToInt32();
-                    List<CacheDatabase> databaseList = new List<CacheDatabase>(dataBaseSize);
+                    List<SixnetCacheDatabase> databaseList = new List<SixnetCacheDatabase>(dataBaseSize);
                     for (var d = 0; d < dataBaseSize; d++)
                     {
-                        databaseList.Add(new CacheDatabase()
+                        databaseList.Add(new SixnetCacheDatabase()
                         {
                             Index = d,
                             Name = $"{d}"
@@ -2790,7 +2790,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>Return get keys result</returns>
-        public async Task<GetKeysResult> GetKeysAsync(CacheServer server, GetKeysParameter parameter)
+        public async Task<SixnetGetKeysResult> GetKeysAsync(SixnetCacheServer server, SixnetGetKeysParameter parameter)
         {
             if (server == null)
             {
@@ -2798,7 +2798,7 @@ namespace Sixnet.Cache.Redis
             }
             if (parameter?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetAllDataBaseParameter)}.{nameof(GetAllDataBaseParameter.EndPoint)}");
+                throw new ArgumentNullException($"{nameof(SixnetGetAllDataBaseParameter)}.{nameof(SixnetGetAllDataBaseParameter.EndPoint)}");
             }
             if (!int.TryParse(server.Database, out int dbIndex))
             {
@@ -2825,20 +2825,20 @@ namespace Sixnet.Cache.Redis
                         break;
                 }
             }
-            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new SixnetCacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 var keys = redisServer.Keys(dbIndex, searchString, query.PageSize, 0, (query.Page - 1) * query.PageSize, CommandFlags.None);
-                var itemList = keys.Select(c => { CacheKey key = ConstantCacheKey.Create(c); return key; }).ToList();
+                var itemList = keys.Select(c => { SixnetCacheKey key = ConstantCacheKey.Create(c); return key; }).ToList();
                 var totalCount = await redisServer.DatabaseSizeAsync(dbIndex).ConfigureAwait(false);
-                var keyItemPaging = new CachePaging<CacheKey>(query.Page, query.PageSize, totalCount, itemList);
-                return new GetKeysResult()
+                var keyItemPaging = new SixnetCachePaging<SixnetCacheKey>(query.Page, query.PageSize, totalCount, itemList);
+                return new SixnetGetKeysResult()
                 {
                     Success = true,
                     Keys = keyItemPaging,
                     CacheServer = server,
                     EndPoint = parameter.EndPoint,
-                    Database = new RedisDatabase()
+                    Database = new SixnetRedisDatabase()
                     {
                         Index = dbIndex,
                         Name = dbIndex.ToString()
@@ -2857,27 +2857,27 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>clear data result</returns>
-        public async Task<ClearDataResult> ClearDataAsync(CacheServer server, ClearDataParameter parameter)
+        public async Task<SixnetClearDataResult> ClearDataAsync(SixnetCacheServer server, SixnetClearDataParameter parameter)
         {
             if (parameter.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(ClearDataParameter)}.{nameof(ClearDataParameter.EndPoint)}");
+                throw new ArgumentNullException($"{nameof(SixnetClearDataParameter)}.{nameof(SixnetClearDataParameter.EndPoint)}");
             }
             if (!int.TryParse(server.Database, out int dbIndex))
             {
                 throw new SixnetException($"Redis database {server.Database} is invalid");
             }
             var cmdFlags = SixnetRedisManager.GetCommandFlags(parameter.CommandFlags);
-            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new SixnetCacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 await redisServer.FlushDatabaseAsync(dbIndex, cmdFlags).ConfigureAwait(false);
-                return new ClearDataResult()
+                return new SixnetClearDataResult()
                 {
                     Success = true,
                     CacheServer = server,
                     EndPoint = parameter.EndPoint,
-                    Database = new RedisDatabase()
+                    Database = new SixnetRedisDatabase()
                     {
                         Index = dbIndex,
                         Name = dbIndex.ToString()
@@ -2896,26 +2896,26 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>get key detail result</returns>
-        public async Task<GetDetailResult> GetKeyDetailAsync(CacheServer server, GetDetailParameter parameter)
+        public async Task<SixnetGetDetailResult> GetKeyDetailAsync(SixnetCacheServer server, SixnetGetDetailParameter parameter)
         {
             if (string.IsNullOrWhiteSpace(parameter?.Key))
             {
-                throw new ArgumentNullException($"{nameof(GetDetailParameter)}.{nameof(GetDetailParameter.Key)}");
+                throw new ArgumentNullException($"{nameof(SixnetGetDetailParameter)}.{nameof(SixnetGetDetailParameter.Key)}");
             }
             if (parameter.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetDetailParameter)}.{nameof(GetDetailParameter.EndPoint)}");
+                throw new ArgumentNullException($"{nameof(SixnetGetDetailParameter)}.{nameof(SixnetGetDetailParameter.EndPoint)}");
             }
             if (!int.TryParse(server.Database, out int dbIndex))
             {
                 throw new SixnetException($"Redis database {server.Database} is invalid");
             }
-            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new SixnetCacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisDatabase = conn.GetDatabase(dbIndex);
                 var redisKeyType = redisDatabase.KeyTypeAsync(parameter.Key.GetActualKey()).ConfigureAwait(false);
                 var cacheKeyType = SixnetRedisManager.GetCacheKeyType(redisKeyType.ToString());
-                var keyItem = new CacheEntry()
+                var keyItem = new SixnetCacheEntry()
                 {
                     Key = parameter.Key.GetActualKey(),
                     Type = cacheKeyType
@@ -2953,12 +2953,12 @@ namespace Sixnet.Cache.Redis
                         keyItem.Value = hashValues;
                         break;
                 }
-                return new GetDetailResult()
+                return new SixnetGetDetailResult()
                 {
                     Success = true,
                     CacheEntry = keyItem,
                     CacheServer = server,
-                    Database = new CacheDatabase()
+                    Database = new SixnetCacheDatabase()
                     {
                         Index = dbIndex,
                         Name = dbIndex.ToString()
@@ -2977,15 +2977,15 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>get server config result</returns>
-        public async Task<GetServerConfigurationResult> GetServerConfigurationAsync(CacheServer server, GetServerConfigurationParameter parameter)
+        public async Task<SixnetGetServerConfigurationResult> GetServerConfigurationAsync(SixnetCacheServer server, SixnetGetServerConfigurationParameter parameter)
         {
             if (parameter?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(GetServerConfigurationParameter)}.{nameof(GetServerConfigurationParameter.EndPoint)}");
+                throw new ArgumentNullException($"{nameof(SixnetGetServerConfigurationParameter)}.{nameof(SixnetGetServerConfigurationParameter.EndPoint)}");
             }
-            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new SixnetCacheEndPoint[1] { parameter.EndPoint }))
             {
-                var config = new RedisServerConfiguration();
+                var config = new SixnetRedisServerConfiguration();
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 var configs = await redisServer.ConfigGetAsync("*").ConfigureAwait(false);
                 if (!configs.IsNullOrEmpty())
@@ -3052,7 +3052,7 @@ namespace Sixnet.Cache.Redis
                                     continue;
                                 }
                                 var valueArray = cfg.Value.LSplit(" ");
-                                var saveInfos = new List<DataChangeSaveParameter>();
+                                var saveInfos = new List<SixnetDataChangeSaveParameter>();
                                 for (var i = 0; i < valueArray.Length; i += 2)
                                 {
                                     if (valueArray.Length <= i + 1)
@@ -3063,7 +3063,7 @@ namespace Sixnet.Cache.Redis
                                     long.TryParse(valueArray[i], out seconds);
                                     long changes = 0;
                                     long.TryParse(valueArray[i + 1], out changes);
-                                    saveInfos.Add(new DataChangeSaveParameter()
+                                    saveInfos.Add(new SixnetDataChangeSaveParameter()
                                     {
                                         Seconds = seconds,
                                         Changes = changes
@@ -3173,7 +3173,7 @@ namespace Sixnet.Cache.Redis
 
                     #endregion
                 }
-                return new GetServerConfigurationResult()
+                return new SixnetGetServerConfigurationResult()
                 {
                     ServerConfiguration = config,
                     Success = true,
@@ -3193,17 +3193,17 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Server</param>
         /// <param name="parameter">Options</param>
         /// <returns>save server config result</returns>
-        public async Task<SaveServerConfigurationResult> SaveServerConfigurationAsync(CacheServer server, SaveServerConfigurationParameter parameter)
+        public async Task<SixnetSaveServerConfigurationResult> SaveServerConfigurationAsync(SixnetCacheServer server, SixnetSaveServerConfigurationParameter parameter)
         {
-            if (!(parameter?.ServerConfiguration is RedisServerConfiguration config))
+            if (!(parameter?.ServerConfiguration is SixnetRedisServerConfiguration config))
             {
-                throw new SixnetException($"{nameof(SaveServerConfigurationParameter.ServerConfiguration)} is not {nameof(RedisServerConfiguration)}");
+                throw new SixnetException($"{nameof(SixnetSaveServerConfigurationParameter.ServerConfiguration)} is not {nameof(SixnetRedisServerConfiguration)}");
             }
             if (parameter?.EndPoint == null)
             {
-                throw new ArgumentNullException($"{nameof(SaveServerConfigurationParameter)}.{nameof(SaveServerConfigurationParameter.EndPoint)}");
+                throw new ArgumentNullException($"{nameof(SixnetSaveServerConfigurationParameter)}.{nameof(SixnetSaveServerConfigurationParameter.EndPoint)}");
             }
-            using (var conn = SixnetRedisManager.GetConnection(server, new CacheEndPoint[1] { parameter.EndPoint }))
+            using (var conn = SixnetRedisManager.GetConnection(server, new SixnetCacheEndPoint[1] { parameter.EndPoint }))
             {
                 var redisServer = conn.GetServer(string.Format("{0}:{1}", parameter.EndPoint.Host, parameter.EndPoint.Port));
                 if (!string.IsNullOrWhiteSpace(config.Host))
@@ -3290,7 +3290,7 @@ namespace Sixnet.Cache.Redis
                     redisServer.ConfigSet("include", config.IncludeConfigurationFile);
                 }
                 await redisServer.ConfigRewriteAsync().ConfigureAwait(false);
-                return new SaveServerConfigurationResult()
+                return new SixnetSaveServerConfigurationResult()
                 {
                     Success = true,
                     CacheServer = server,
@@ -3305,7 +3305,7 @@ namespace Sixnet.Cache.Redis
 
         #region Util
 
-        Task<RedisResult> ExecuteStatementAsync(CacheServer server, RedisDatabase database, RedisStatement statement)
+        Task<RedisResult> ExecuteStatementAsync(SixnetCacheServer server, SixnetRedisDatabase database, SixnetRedisStatement statement)
         {
             return database.RemoteDatabase.ScriptEvaluateAsync(statement.Script, statement.Keys, statement.Parameters, statement.Flags);
         }

@@ -5,7 +5,7 @@ using StackExchange.Redis;
 
 namespace Sixnet.Cache.Redis
 {
-    public struct RedisStatement
+    public struct SixnetRedisStatement
     {
         public string Script { get; set; }
 

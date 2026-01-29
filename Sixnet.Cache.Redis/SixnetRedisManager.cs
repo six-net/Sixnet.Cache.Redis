@@ -6,6 +6,7 @@ using System.Text;
 using System.Net;
 using Sixnet.Logging;
 using Sixnet.Exceptions;
+using Sixnet.DependencyInjection;
 
 namespace Sixnet.Cache.Redis
 {
@@ -53,7 +54,7 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="expiration">Cache expiration</param>
         /// <returns></returns>
-        internal static Tuple<bool, TimeSpan?> GetExpiration(CacheExpiration expiration)
+        internal static Tuple<bool, TimeSpan?> GetExpiration(SixnetCacheExpiration expiration)
         {
             if (expiration == null)
             {
@@ -88,14 +89,14 @@ namespace Sixnet.Cache.Redis
         /// <summary>
         /// key=>"{CacheServer.Name}_{DatabaseIndex}"
         /// </summary>
-        static readonly Dictionary<string, RedisDatabase> Databases = new Dictionary<string, RedisDatabase>();
+        static readonly Dictionary<string, SixnetRedisDatabase> Databases = new Dictionary<string, SixnetRedisDatabase>();
 
         /// <summary>
         /// Get config connection
         /// </summary>
         /// <param name="cacheServer">Cache server</param>
         /// <returns></returns>
-        public static ConnectionMultiplexer GetConfigConnection(CacheServer cacheServer)
+        public static ConnectionMultiplexer GetConfigConnection(SixnetCacheServer cacheServer)
         {
             ConnectionMultiplexers.TryGetValue(cacheServer?.Name, out var conn);
             return conn;
@@ -107,7 +108,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="cacheServer">Cache server</param>
         /// <param name="endPoints">End points</param>
         /// <returns></returns>
-        public static ConnectionMultiplexer GetConnection(CacheServer cacheServer, IEnumerable<CacheEndPoint> endPoints)
+        public static ConnectionMultiplexer GetConnection(SixnetCacheServer cacheServer, IEnumerable<SixnetCacheEndPoint> endPoints)
         {
             if (cacheServer == null || endPoints == null)
             {
@@ -121,11 +122,11 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="cacheServer">Cache server</param>
         /// <returns></returns>
-        public static RedisDatabase GetDatabase(CacheServer cacheServer)
+        public static SixnetRedisDatabase GetDatabase(SixnetCacheServer cacheServer)
         {
             if (string.IsNullOrEmpty(cacheServer?.Name))
             {
-                throw new ArgumentNullException(nameof(CacheServer.Name));
+                throw new ArgumentNullException(nameof(SixnetCacheServer.Name));
             }
             var database = cacheServer.Database;
             if (string.IsNullOrWhiteSpace(database))
@@ -145,7 +146,7 @@ namespace Sixnet.Cache.Redis
                     {
                         return nowDatabase;
                     }
-                    nowDatabase = new RedisDatabase()
+                    nowDatabase = new SixnetRedisDatabase()
                     {
                         Index = dbIndex,
                         Name = dbName,
@@ -169,7 +170,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="endPoints">EndPoints</param>
         /// <param name="ignoreConnectionException">Ignore connection exception</param>
         /// <returns></returns>
-        internal static ConnectionMultiplexer CreateConnection(CacheServer server, IEnumerable<CacheEndPoint> endPoints, bool ignoreConnectionException = true)
+        internal static ConnectionMultiplexer CreateConnection(SixnetCacheServer server, IEnumerable<SixnetCacheEndPoint> endPoints, bool ignoreConnectionException = true)
         {
             try
             {
@@ -220,7 +221,7 @@ namespace Sixnet.Cache.Redis
             }
             catch (Exception ex)
             {
-                SixnetLogger.LogError<RedisProvider>(SixnetLogEvents.Cache.ConnectionCacheServerError, ex, ex.Message);
+                SixnetLogger.LogError<SixnetRedisProvider>(SixnetLogEvents.Cache.ConnectionCacheServerError, ex, ex.Message);
                 if (!ignoreConnectionException)
                 {
                     throw;
@@ -235,7 +236,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="server">Cache server</param>
         /// <param name="endPoints">End points</param>
         /// <param name="ignoreConnectionException">Ignore connection exception</param>
-        public static void RegisterServer(CacheServer server, IEnumerable<CacheEndPoint> endPoints, bool ignoreConnectionException = true)
+        public static void RegisterServer(SixnetCacheServer server, IEnumerable<SixnetCacheEndPoint> endPoints, bool ignoreConnectionException = true)
         {
             var conn = CreateConnection(server, endPoints, ignoreConnectionException);
             if (conn == null)
@@ -250,7 +251,7 @@ namespace Sixnet.Cache.Redis
             if (int.TryParse(database, out var dbIndex) && dbIndex >= 0)
             {
                 string databaseName = $"{server.Name}_{database}";
-                Databases[databaseName] = new RedisDatabase()
+                Databases[databaseName] = new SixnetRedisDatabase()
                 {
                     Name = databaseName,
                     Index = dbIndex,
@@ -266,14 +267,14 @@ namespace Sixnet.Cache.Redis
         /// <param name="serverName">Server name</param>
         /// <param name="endPoint">End point</param>
         /// <param name="ignoreConnectionException">Ignore connection exception</param>
-        public static void RegisterServer(string serverName, CacheEndPoint endPoint, bool ignoreConnectionException = true)
+        public static void RegisterServer(string serverName, SixnetCacheEndPoint endPoint, bool ignoreConnectionException = true)
         {
-            var server = new CacheServer() 
+            var server = new SixnetCacheServer()
             {
                 Name = serverName,
                 Type = CacheServerType.Redis
             };
-            RegisterServer(server, new CacheEndPoint[1] { endPoint }, ignoreConnectionException);
+            RegisterServer(server, new SixnetCacheEndPoint[1] { endPoint }, ignoreConnectionException);
         }
 
         /// <summary>
@@ -285,11 +286,11 @@ namespace Sixnet.Cache.Redis
         /// <param name="ignoreConnectionException">Ignore connection exception</param>
         public static void RegisterServer(string serverName, string host, int port, bool ignoreConnectionException = true)
         {
-            RegisterServer(serverName, new CacheEndPoint() { Host = host, Port = port }, ignoreConnectionException);
+            RegisterServer(serverName, new SixnetCacheEndPoint() { Host = host, Port = port }, ignoreConnectionException);
         }
 
         /// <summary>
-        /// Register
+        /// Register server
         /// </summary>
         /// <param name="serverName">Server name</param>
         /// <param name="host">Host</param>
@@ -297,6 +298,19 @@ namespace Sixnet.Cache.Redis
         public static void RegisterServer(string serverName, string host, bool ignoreConnectionException = true)
         {
             RegisterServer(serverName, host, 6379, ignoreConnectionException);
+        }
+
+        /// <summary>
+        /// Register server
+        /// </summary>
+        /// <param name="cacheOptions">Cache options</param>
+        /// <param name="ignoreConnectionException">Ignore connection exception</param>
+        public static void RegisterServer(SixnetCacheOptions cacheOptions, bool ignoreConnectionException = true)
+        {
+            if (cacheOptions.Server?.Type == CacheServerType.Redis)
+            {
+                RegisterServer(cacheOptions.Server, cacheOptions.Server.EndPoints, ignoreConnectionException);
+            }
         }
 
         #endregion
