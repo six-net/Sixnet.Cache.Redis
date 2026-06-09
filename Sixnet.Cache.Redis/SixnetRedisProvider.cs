@@ -2044,11 +2044,11 @@ return pv";
             var newCacheValue = ExecuteStatement(server, database, statement);
             if (integerValue)
             {
-                newValue = ObjectExtensions.ConvertTo((long)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((long)newCacheValue, dataType);
             }
             else
             {
-                newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((double)newCacheValue, dataType);
             }
             return new SixnetHashIncrementResult()
             {
@@ -2373,11 +2373,11 @@ return pv";
             var newCacheValue = ExecuteStatement(server, database, statement);
             if (integerValue)
             {
-                newValue = ObjectExtensions.ConvertTo((long)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((long)newCacheValue, dataType);
             }
             else
             {
-                newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((double)newCacheValue, dataType);
             }
             return new SixnetHashDecrementResult()
             {
@@ -3498,7 +3498,7 @@ return obv";
 
         SixnetRedisStatement GetSortedSetRankStatement(SixnetSortedSetRankParameter parameter)
         {
-            var script = $@"local pv=redis.call('Z{(parameter.Order == CacheOrder.Descending ? "REV" : "")}RANK',{Keys(1)},{Arg(1)})
+            var script = $@"local pv=redis.call('Z{(parameter.Order == SixnetCacheOrder.Descending ? "REV" : "")}RANK',{Keys(1)},{Arg(1)})
 {GetRefreshExpirationScript(-1)}
 return pv";
             var keys = new RedisKey[]
@@ -3565,7 +3565,7 @@ return pv";
             var command = "ZRANGEBYLEX";
             string beginValue = string.Empty;
             string endValue = string.Empty;
-            if (parameter.Order == CacheOrder.Descending)
+            if (parameter.Order == SixnetCacheOrder.Descending)
             {
                 command = "ZREVRANGEBYLEX";
                 beginValue = FormatSortedSetRangeBoundary(parameter.MaxValue, false, parameter.Exclude);
@@ -3652,7 +3652,7 @@ return pv";
             var command = "ZRANGEBYSCORE";
             string beginValue = "";
             string endValue = "";
-            if (parameter.Order == CacheOrder.Descending)
+            if (parameter.Order == SixnetCacheOrder.Descending)
             {
                 command = "ZREVRANGEBYSCORE";
                 beginValue = FormatSortedSetScoreRangeBoundary(parameter.Stop, false, parameter.Exclude);
@@ -3728,7 +3728,7 @@ return pv";
             var command = "ZRANGEBYSCORE";
             string beginValue = "";
             string endValue = "";
-            if (parameter.Order == CacheOrder.Descending)
+            if (parameter.Order == SixnetCacheOrder.Descending)
             {
                 command = "ZREVRANGEBYSCORE";
                 beginValue = FormatSortedSetScoreRangeBoundary(parameter.Stop, false, parameter.Exclude);
@@ -3814,7 +3814,7 @@ return pv";
 
         SixnetRedisStatement GetSortedSetRangeByRankWithScoresStatement(SixnetSortedSetRangeByRankWithScoresParameter parameter)
         {
-            var script = $@"local pv=redis.call('Z{(parameter.Order == CacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)},'WITHSCORES')
+            var script = $@"local pv=redis.call('Z{(parameter.Order == SixnetCacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)},'WITHSCORES')
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -3876,7 +3876,7 @@ return pv";
 
         SixnetRedisStatement GetSortedSetRangeByRankStatement(SixnetSortedSetRangeByRankParameter parameter)
         {
-            var script = $@"local pv=redis.call('Z{(parameter.Order == CacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)})
+            var script = $@"local pv=redis.call('Z{(parameter.Order == SixnetCacheOrder.Descending ? "REV" : "")}RANGE',{Keys(1)},{Arg(1)},{Arg(2)})
 {GetRefreshExpirationScript()}
 return pv";
             var keys = new RedisKey[]
@@ -4321,7 +4321,7 @@ return obv";
 
         SixnetRedisStatement GetSortStatement(SixnetSortParameter parameter)
         {
-            var script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(parameter.By) ? string.Empty : $",'BY','{parameter.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(parameter.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", parameter.Gets.Select(c => $"'GET','{c}'"))}")},{(parameter.Order == CacheOrder.Descending ? "'DESC'" : "'ASC'")}{(parameter.SortType == CacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)})
+            var script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(parameter.By) ? string.Empty : $",'BY','{parameter.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(parameter.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", parameter.Gets.Select(c => $"'GET','{c}'"))}")},{(parameter.Order == SixnetCacheOrder.Descending ? "'DESC'" : "'ASC'")}{(parameter.SortType == SixnetCacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)})
 {GetRefreshExpirationScript()}
 return obv";
             var keys = new RedisKey[]
@@ -4387,7 +4387,7 @@ return obv";
 
         SixnetRedisStatement GetSortAndStoreStatement(SixnetSortAndStoreParameter parameter)
         {
-            var script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(parameter.By) ? string.Empty : $",'BY','{parameter.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(parameter.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", parameter.Gets.Select(c => $"'GET','{c}'"))}")},{(parameter.Order == CacheOrder.Descending ? "'DESC'" : "'ASC'")}{(parameter.SortType == CacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)},'STORE',{Keys(2)})
+            var script = $@"local obv=redis.call('SORT',{Keys(1)}{(string.IsNullOrWhiteSpace(parameter.By) ? string.Empty : $",'BY','{parameter.By}'")},'LIMIT',{Arg(1)},{Arg(2)}{(parameter.Gets.IsNullOrEmpty() ? string.Empty : $",{string.Join(",", parameter.Gets.Select(c => $"'GET','{c}'"))}")},{(parameter.Order == SixnetCacheOrder.Descending ? "'DESC'" : "'ASC'")}{(parameter.SortType == SixnetCacheSortType.Alphabetic ? ",'ALPHA'" : string.Empty)},'STORE',{Keys(2)})
 {GetRefreshExpirationScript()}
 {GetRefreshExpirationScript(3, 1)}
 return obv";
@@ -5201,10 +5201,10 @@ return pv";
             {
                 switch (query.Type)
                 {
-                    case KeyMatchPattern.StartWith:
+                    case SixnetKeyMatchPattern.StartWith:
                         searchString = query.MateKey + "*";
                         break;
-                    case KeyMatchPattern.EndWith:
+                    case SixnetKeyMatchPattern.EndWith:
                         searchString = "*" + query.MateKey;
                         break;
                     default:
@@ -5309,28 +5309,28 @@ return pv";
                 };
                 switch (cacheKeyType)
                 {
-                    case CacheKeyType.String:
+                    case SixnetCacheKeyType.String:
                         keyItem.Value = redisDatabase.StringGetAsync(keyItem.Key.GetActualKey());
                         break;
-                    case CacheKeyType.List:
+                    case SixnetCacheKeyType.List:
                         var listValues = new List<string>();
                         var listResults = redisDatabase.ListRange(keyItem.Key.GetActualKey(), 0, -1, CommandFlags.None);
                         listValues.AddRange(listResults.Select(c => (string)c));
                         keyItem.Value = listValues;
                         break;
-                    case CacheKeyType.Set:
+                    case SixnetCacheKeyType.Set:
                         var setValues = new List<string>();
                         var setResults = redisDatabase.SetMembers(keyItem.Key.GetActualKey(), CommandFlags.None);
                         setValues.AddRange(setResults.Select(c => (string)c));
                         keyItem.Value = setValues;
                         break;
-                    case CacheKeyType.SortedSet:
+                    case SixnetCacheKeyType.SortedSet:
                         var sortSetValues = new List<string>();
                         var sortedResults = redisDatabase.SortedSetRangeByRank(keyItem.Key.GetActualKey());
                         sortSetValues.AddRange(sortedResults.Select(c => (string)c));
                         keyItem.Value = sortSetValues;
                         break;
-                    case CacheKeyType.Hash:
+                    case SixnetCacheKeyType.Hash:
                         var hashValues = new Dictionary<string, string>();
                         var objValues = redisDatabase.HashGetAll(keyItem.Key.GetActualKey());
                         foreach (var obj in objValues)
@@ -5407,20 +5407,20 @@ return pv";
                                 config.TimeOut = timeOut;
                                 break;
                             case "loglevel":
-                                var logLevel = CacheLogLevel.Verbose;
+                                var logLevel = SixnetCacheLogLevel.Verbose;
                                 switch (cfg.Value)
                                 {
                                     case "debug":
-                                        logLevel = CacheLogLevel.Debug;
+                                        logLevel = SixnetCacheLogLevel.Debug;
                                         break;
                                     case "verbose":
-                                        logLevel = CacheLogLevel.Verbose;
+                                        logLevel = SixnetCacheLogLevel.Verbose;
                                         break;
                                     case "notice":
-                                        logLevel = CacheLogLevel.Notice;
+                                        logLevel = SixnetCacheLogLevel.Notice;
                                         break;
                                     case "warning":
-                                        logLevel = CacheLogLevel.Warning;
+                                        logLevel = SixnetCacheLogLevel.Warning;
                                         break;
                                 }
                                 config.LogLevel = logLevel;
@@ -5508,14 +5508,14 @@ return pv";
                                 config.AppendFileName = cfg.Value;
                                 break;
                             case "appendfsync":
-                                var appendSync = AppendfSync.EverySecond;
+                                var appendSync = SixnetAppendfSync.EverySecond;
                                 switch (cfg.Value)
                                 {
                                     case "no":
-                                        appendSync = AppendfSync.No;
+                                        appendSync = SixnetAppendfSync.No;
                                         break;
                                     case "always":
-                                        appendSync = AppendfSync.Always;
+                                        appendSync = SixnetAppendfSync.Always;
                                         break;
                                 }
                                 config.AppendfSync = appendSync;
@@ -5652,13 +5652,13 @@ return pv";
                 var appendfSyncVal = "everysec";
                 switch (config.AppendfSync)
                 {
-                    case AppendfSync.Always:
+                    case SixnetAppendfSync.Always:
                         appendfSyncVal = "always";
                         break;
-                    case AppendfSync.EverySecond:
+                    case SixnetAppendfSync.EverySecond:
                         appendfSyncVal = "everysec";
                         break;
-                    case AppendfSync.No:
+                    case SixnetAppendfSync.No:
                         appendfSyncVal = "no";
                         break;
                 }
@@ -5781,18 +5781,18 @@ end";
         /// <param name="value">Value</param>
         /// <param name="exclude">Exclude type</param>
         /// <returns></returns>
-        static string FormatSortedSetRangeBoundary(string value, bool startValue, BoundaryExclude exclude)
+        static string FormatSortedSetRangeBoundary(string value, bool startValue, SixnetBoundaryExclude exclude)
         {
             switch (exclude)
             {
-                case BoundaryExclude.None:
+                case SixnetBoundaryExclude.None:
                 default:
                     return $"[{value}";
-                case BoundaryExclude.Both:
+                case SixnetBoundaryExclude.Both:
                     return $"({value}";
-                case BoundaryExclude.Start:
+                case SixnetBoundaryExclude.Start:
                     return startValue ? $"({value}" : $"[{value}";
-                case BoundaryExclude.Stop:
+                case SixnetBoundaryExclude.Stop:
                     return startValue ? $"[{value}" : $"({value}";
             }
         }
@@ -5804,18 +5804,18 @@ end";
         /// <param name="startValue">Whether is start score</param>
         /// <param name="exclude">Exclude parameter</param>
         /// <returns></returns>
-        static string FormatSortedSetScoreRangeBoundary(double score, bool startValue, BoundaryExclude exclude)
+        static string FormatSortedSetScoreRangeBoundary(double score, bool startValue, SixnetBoundaryExclude exclude)
         {
             switch (exclude)
             {
-                case BoundaryExclude.None:
+                case SixnetBoundaryExclude.None:
                 default:
                     return score.ToString();
-                case BoundaryExclude.Both:
+                case SixnetBoundaryExclude.Both:
                     return $"({score}";
-                case BoundaryExclude.Start:
+                case SixnetBoundaryExclude.Start:
                     return startValue ? $"({score}" : $"{score}";
-                case BoundaryExclude.Stop:
+                case SixnetBoundaryExclude.Stop:
                     return startValue ? $"{score}" : $"({score}";
             }
         }

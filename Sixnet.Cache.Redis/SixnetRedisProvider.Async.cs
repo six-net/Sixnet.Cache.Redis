@@ -1082,11 +1082,11 @@ namespace Sixnet.Cache.Redis
             var newCacheValue = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             if (integerValue)
             {
-                newValue = ObjectExtensions.ConvertTo((long)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((long)newCacheValue, dataType);
             }
             else
             {
-                newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((double)newCacheValue, dataType);
             }
             return new SixnetHashIncrementResult()
             {
@@ -1275,11 +1275,11 @@ namespace Sixnet.Cache.Redis
             var newCacheValue = await ExecuteStatementAsync(server, database, statement).ConfigureAwait(false);
             if (integerValue)
             {
-                newValue = ObjectExtensions.ConvertTo((long)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((long)newCacheValue, dataType);
             }
             else
             {
-                newValue = ObjectExtensions.ConvertTo((double)newCacheValue, dataType);
+                newValue = SixnetObjectExtensions.ConvertTo((double)newCacheValue, dataType);
             }
             return new SixnetHashDecrementResult()
             {
@@ -2811,13 +2811,13 @@ namespace Sixnet.Cache.Redis
             {
                 switch (query.Type)
                 {
-                    case KeyMatchPattern.StartWith:
+                    case SixnetKeyMatchPattern.StartWith:
                         searchString = query.MateKey + "*";
                         break;
-                    case KeyMatchPattern.EndWith:
+                    case SixnetKeyMatchPattern.EndWith:
                         searchString = "*" + query.MateKey;
                         break;
-                    case KeyMatchPattern.Custom:
+                    case SixnetKeyMatchPattern.Custom:
                         searchString = query.MateKey;
                         break;
                     default:
@@ -2922,28 +2922,28 @@ namespace Sixnet.Cache.Redis
                 };
                 switch (cacheKeyType)
                 {
-                    case CacheKeyType.String:
+                    case SixnetCacheKeyType.String:
                         keyItem.Value = await redisDatabase.StringGetAsync(keyItem.Key.GetActualKey()).ConfigureAwait(false);
                         break;
-                    case CacheKeyType.List:
+                    case SixnetCacheKeyType.List:
                         var listValues = new List<string>();
                         var listResults = await redisDatabase.ListRangeAsync(keyItem.Key.GetActualKey(), 0, -1, CommandFlags.None).ConfigureAwait(false);
                         listValues.AddRange(listResults.Select(c => (string)c));
                         keyItem.Value = listValues;
                         break;
-                    case CacheKeyType.Set:
+                    case SixnetCacheKeyType.Set:
                         var setValues = new List<string>();
                         var setResults = await redisDatabase.SetMembersAsync(keyItem.Key.GetActualKey(), CommandFlags.None).ConfigureAwait(false);
                         setValues.AddRange(setResults.Select(c => (string)c));
                         keyItem.Value = setValues;
                         break;
-                    case CacheKeyType.SortedSet:
+                    case SixnetCacheKeyType.SortedSet:
                         var sortSetValues = new List<string>();
                         var sortedResults = await redisDatabase.SortedSetRangeByRankAsync(keyItem.Key.GetActualKey()).ConfigureAwait(false);
                         sortSetValues.AddRange(sortedResults.Select(c => (string)c));
                         keyItem.Value = sortSetValues;
                         break;
-                    case CacheKeyType.Hash:
+                    case SixnetCacheKeyType.Hash:
                         var hashValues = new Dictionary<string, string>();
                         var objValues = await redisDatabase.HashGetAllAsync(keyItem.Key.GetActualKey()).ConfigureAwait(false);
                         foreach (var obj in objValues)
@@ -3020,20 +3020,20 @@ namespace Sixnet.Cache.Redis
                                 config.TimeOut = timeOut;
                                 break;
                             case "loglevel":
-                                var logLevel = CacheLogLevel.Verbose;
+                                var logLevel = SixnetCacheLogLevel.Verbose;
                                 switch (cfg.Value)
                                 {
                                     case "debug":
-                                        logLevel = CacheLogLevel.Debug;
+                                        logLevel = SixnetCacheLogLevel.Debug;
                                         break;
                                     case "verbose":
-                                        logLevel = CacheLogLevel.Verbose;
+                                        logLevel = SixnetCacheLogLevel.Verbose;
                                         break;
                                     case "notice":
-                                        logLevel = CacheLogLevel.Notice;
+                                        logLevel = SixnetCacheLogLevel.Notice;
                                         break;
                                     case "warning":
-                                        logLevel = CacheLogLevel.Warning;
+                                        logLevel = SixnetCacheLogLevel.Warning;
                                         break;
                                 }
                                 config.LogLevel = logLevel;
@@ -3121,14 +3121,14 @@ namespace Sixnet.Cache.Redis
                                 config.AppendFileName = cfg.Value;
                                 break;
                             case "appendfsync":
-                                var appendSync = AppendfSync.EverySecond;
+                                var appendSync = SixnetAppendfSync.EverySecond;
                                 switch (cfg.Value)
                                 {
                                     case "no":
-                                        appendSync = AppendfSync.No;
+                                        appendSync = SixnetAppendfSync.No;
                                         break;
                                     case "always":
-                                        appendSync = AppendfSync.Always;
+                                        appendSync = SixnetAppendfSync.Always;
                                         break;
                                 }
                                 config.AppendfSync = appendSync;
@@ -3265,13 +3265,13 @@ namespace Sixnet.Cache.Redis
                 var appendfSyncVal = "everysec";
                 switch (config.AppendfSync)
                 {
-                    case AppendfSync.Always:
+                    case SixnetAppendfSync.Always:
                         appendfSyncVal = "always";
                         break;
-                    case AppendfSync.EverySecond:
+                    case SixnetAppendfSync.EverySecond:
                         appendfSyncVal = "everysec";
                         break;
-                    case AppendfSync.No:
+                    case SixnetAppendfSync.No:
                         appendfSyncVal = "no";
                         break;
                 }

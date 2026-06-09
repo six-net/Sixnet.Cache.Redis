@@ -54,7 +54,7 @@ namespace Sixnet.Cache.Redis
         /// <summary>
         /// Gets or sets the log level
         /// </summary>
-        public CacheLogLevel LogLevel
+        public SixnetCacheLogLevel LogLevel
         {
             get; set;
         }
@@ -174,7 +174,7 @@ namespace Sixnet.Cache.Redis
         /// <summary>
         /// Gets or sets the appendf sync
         /// </summary>
-        public AppendfSync AppendfSync
+        public SixnetAppendfSync AppendfSync
         {
             get; set;
         }

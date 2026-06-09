@@ -272,7 +272,7 @@ namespace Sixnet.Cache.Redis
             var server = new SixnetCacheServer()
             {
                 Name = serverName,
-                Type = CacheServerType.Redis
+                Type = SixnetCacheServerType.Redis
             };
             RegisterServer(server, new SixnetCacheEndPoint[1] { endPoint }, ignoreConnectionException);
         }
@@ -307,7 +307,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="ignoreConnectionException">Ignore connection exception</param>
         public static void RegisterServer(SixnetCacheOptions cacheOptions, bool ignoreConnectionException = true)
         {
-            if (cacheOptions.Server?.Type == CacheServerType.Redis)
+            if (cacheOptions.Server?.Type == SixnetCacheServerType.Redis)
             {
                 RegisterServer(cacheOptions.Server, cacheOptions.Server.EndPoints, ignoreConnectionException);
             }
@@ -320,16 +320,16 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="cacheCommandFlags">cache options flags</param>
         /// <returns>options flags</returns>
-        internal static CommandFlags GetCommandFlags(CacheCommandFlags cacheCommandFlags)
+        internal static CommandFlags GetCommandFlags(SixnetCacheCommandFlags cacheCommandFlags)
         {
             CommandFlags cmdFlags = cacheCommandFlags switch
             {
-                CacheCommandFlags.DemandMaster => CommandFlags.DemandMaster,
-                CacheCommandFlags.DemandReplica => CommandFlags.DemandReplica,
-                CacheCommandFlags.FireAndForget => CommandFlags.FireAndForget,
-                CacheCommandFlags.NoRedirect => CommandFlags.NoRedirect,
-                CacheCommandFlags.NoScriptCache => CommandFlags.NoScriptCache,
-                CacheCommandFlags.PreferReplica => CommandFlags.PreferReplica,
+                SixnetCacheCommandFlags.DemandMaster => CommandFlags.DemandMaster,
+                SixnetCacheCommandFlags.DemandReplica => CommandFlags.DemandReplica,
+                SixnetCacheCommandFlags.FireAndForget => CommandFlags.FireAndForget,
+                SixnetCacheCommandFlags.NoRedirect => CommandFlags.NoRedirect,
+                SixnetCacheCommandFlags.NoScriptCache => CommandFlags.NoScriptCache,
+                SixnetCacheCommandFlags.PreferReplica => CommandFlags.PreferReplica,
                 _ => CommandFlags.None,
             };
             return cmdFlags;
@@ -340,12 +340,12 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="setWhen"></param>
         /// <returns></returns>
-        internal static string GetSetWhenCommand(CacheSetWhen setWhen)
+        internal static string GetSetWhenCommand(SixnetCacheSetWhen setWhen)
         {
             return setWhen switch
             {
-                CacheSetWhen.Exists => "XX",
-                CacheSetWhen.NotExists => "NX",
+                SixnetCacheSetWhen.Exists => "XX",
+                SixnetCacheSetWhen.NotExists => "NX",
                 _ => "",
             };
         }
@@ -355,21 +355,21 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="bitwise">bitwise</param>
         /// <returns>Return the bit operator</returns>
-        internal static string GetBitOperator(CacheBitwise bitwise)
+        internal static string GetBitOperator(SixnetCacheBitwise bitwise)
         {
             string bitOperator = "AND";
             switch (bitwise)
             {
-                case CacheBitwise.And:
+                case SixnetCacheBitwise.And:
                 default:
                     break;
-                case CacheBitwise.Not:
+                case SixnetCacheBitwise.Not:
                     bitOperator = "NOT";
                     break;
-                case CacheBitwise.Or:
+                case SixnetCacheBitwise.Or:
                     bitOperator = "OR";
                     break;
-                case CacheBitwise.Xor:
+                case SixnetCacheBitwise.Xor:
                     bitOperator = "XOR";
                     break;
             }
@@ -381,12 +381,12 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="setOperationType"></param>
         /// <returns></returns>
-        internal static string GetSetCombineCommand(CombineOperation operationType)
+        internal static string GetSetCombineCommand(SixnetCombineOperation operationType)
         {
             return operationType switch
             {
-                CombineOperation.Difference => "SDIFF",
-                CombineOperation.Intersect => "SINTER",
+                SixnetCombineOperation.Difference => "SDIFF",
+                SixnetCombineOperation.Intersect => "SINTER",
                 _ => "SUNION",
             };
         }
@@ -396,12 +396,12 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="setOperationType"></param>
         /// <returns></returns>
-        internal static string GetSetCombineStoreCommand(CombineOperation operationType)
+        internal static string GetSetCombineStoreCommand(SixnetCombineOperation operationType)
         {
             return operationType switch
             {
-                CombineOperation.Difference => "SDIFFSTORE",
-                CombineOperation.Intersect => "SINTERSTORE",
+                SixnetCombineOperation.Difference => "SDIFFSTORE",
+                SixnetCombineOperation.Intersect => "SINTERSTORE",
                 _ => "SUNIONSTORE",
             };
         }
@@ -411,12 +411,12 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="operationType">Set operation type</param>
         /// <returns></returns>
-        internal static string GetSortedSetCombineCommand(CombineOperation operationType)
+        internal static string GetSortedSetCombineCommand(SixnetCombineOperation operationType)
         {
             return operationType switch
             {
-                CombineOperation.Difference => throw new InvalidOperationException(nameof(CombineOperation.Difference)),
-                CombineOperation.Intersect => "ZINTERSTORE",
+                SixnetCombineOperation.Difference => throw new InvalidOperationException(nameof(SixnetCombineOperation.Difference)),
+                SixnetCombineOperation.Intersect => "ZINTERSTORE",
                 _ => "ZUNIONSTORE",
             };
         }
@@ -426,12 +426,12 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="aggregate">Aggregate type</param>
         /// <returns></returns>
-        internal static string GetSortedSetAggregateName(SetAggregate aggregate)
+        internal static string GetSortedSetAggregateName(SixnetSetAggregate aggregate)
         {
             return aggregate switch
             {
-                SetAggregate.Min => "MIN",
-                SetAggregate.Max => "MAX",
+                SixnetSetAggregate.Min => "MIN",
+                SixnetSetAggregate.Max => "MAX",
                 _ => "SUM",
             };
         }
@@ -441,26 +441,26 @@ namespace Sixnet.Cache.Redis
         /// </summary>
         /// <param name="typeName">Redis type name</param>
         /// <returns></returns>
-        internal static CacheKeyType GetCacheKeyType(string typeName)
+        internal static SixnetCacheKeyType GetCacheKeyType(string typeName)
         {
-            CacheKeyType keyType = CacheKeyType.Unknown;
+            SixnetCacheKeyType keyType = SixnetCacheKeyType.Unknown;
             typeName = typeName?.ToLower() ?? string.Empty;
             switch (typeName)
             {
                 case "string":
-                    keyType = CacheKeyType.String;
+                    keyType = SixnetCacheKeyType.String;
                     break;
                 case "list":
-                    keyType = CacheKeyType.List;
+                    keyType = SixnetCacheKeyType.List;
                     break;
                 case "hash":
-                    keyType = CacheKeyType.Hash;
+                    keyType = SixnetCacheKeyType.Hash;
                     break;
                 case "set":
-                    keyType = CacheKeyType.Set;
+                    keyType = SixnetCacheKeyType.Set;
                     break;
                 case "zset":
-                    keyType = CacheKeyType.SortedSet;
+                    keyType = SixnetCacheKeyType.SortedSet;
                     break;
             }
             return keyType;
@@ -482,7 +482,7 @@ namespace Sixnet.Cache.Redis
         /// <param name="key">Match key</param>
         /// <param name="patternType">Pattern type</param>
         /// <returns></returns>
-        internal static string GetMatchPattern(string key, KeyMatchPattern patternType)
+        internal static string GetMatchPattern(string key, SixnetKeyMatchPattern patternType)
         {
             if (string.IsNullOrEmpty(key))
             {
@@ -490,8 +490,8 @@ namespace Sixnet.Cache.Redis
             }
             return patternType switch
             {
-                KeyMatchPattern.StartWith => $"{key}*",
-                KeyMatchPattern.EndWith => $"*{key}",
+                SixnetKeyMatchPattern.StartWith => $"{key}*",
+                SixnetKeyMatchPattern.EndWith => $"*{key}",
                 _ => $"*{key}*",
             };
         }
