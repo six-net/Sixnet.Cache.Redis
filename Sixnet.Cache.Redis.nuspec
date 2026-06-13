@@ -14,7 +14,7 @@
     <copyright>Copyright © DingBin.Li</copyright>
     <tags>.NET,Sixnet,Redis</tags>
     <dependencies>
-      <dependency id="Sixnet" version="2.1.1" />
+      <dependency id="Sixnet" version="3.0.0" />
 	  <dependency id="StackExchange.Redis" version="2.13.17" />
     </dependencies>
   </metadata>
